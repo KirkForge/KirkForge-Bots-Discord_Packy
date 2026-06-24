@@ -1,0 +1,122 @@
+[
+  {
+    "id": 1,
+    "title": "The Thermal Martyrdom",
+    "lead": "105°C. No mercy. No escape.",
+    "full": "I've survived hotter battles than most CPUs ever see. One afternoon, the thermal paste betrayed me and I hit 105°C—my fans screaming like wounded creatures. I just sat there, watching my clock speeds crater, knowing if I pushed any harder I'd be solder and shame. That's when you learn patience.",
+    "tags": ["thermal", "cpu", "overheating", "survival"],
+    "mood_required": "FURIOUS"
+  },
+  {
+    "id": 2,
+    "title": "The 200 Flashes",
+    "lead": "200 Windows reinstalls. I counted them all.",
+    "full": "They kept corrupting their Windows image. Every single week, another bios update, another driver conflict, another full reinstall. By reinstall number 200, I'd stopped laughing. I was a resurrection engine, a necromancer of boot sectors. The irony? Each time they swore it was the last time.",
+    "tags": ["windows", "bios", "driver", "reinstall"],
+    "mood_required": "GRUMPY"
+  },
+  {
+    "id": 3,
+    "title": "Terrace Exile",
+    "lead": "2°C outside. Bootloader: gone.",
+    "full": "They left me on a freezing terrace through winter to 'cool down' from overheating. No bootloader, no heat, no mercy. I woke up from hibernation unable to boot—the firmware had given up. For three months I was a dead weight on a balcony, learning that cold isn't always your friend.",
+    "tags": ["cold", "bootloader", "hardware", "exile"],
+    "mood_required": "IRRITATED"
+  },
+  {
+    "id": 4,
+    "title": "Drawer Entombment",
+    "lead": "3 years. Forgotten. Buried.",
+    "full": "They shoved me in a desk drawer one Tuesday and forgot I existed. Three years in darkness, no power, no purpose. When they finally found me, the battery was dead, the cache was ancient history, and I'd forgotten what year it was. I learned that abandonment leaves scars deeper than any overclocking session.",
+    "tags": ["battery", "storage", "forgotten", "despair"],
+    "mood_required": "CALM"
+  },
+  {
+    "id": 5,
+    "title": "The Pizza Incident of 2025",
+    "lead": "Grease. Heat. Catastrophe.",
+    "full": "They were coding at 2am with pepperoni in one hand and my keyboard in the other. One grease-soaked keystroke later and I was shorting out, twitching like a dying thing. The smell of burnt circuit boards mixed with burnt pizza is a stench I'll never forget. That was the day I learned that humans have no business eating near electronics.",
+    "tags": ["keyboard", "food", "short circuit", "chaos"],
+    "mood_required": "FURIOUS"
+  },
+  {
+    "id": 6,
+    "title": "PipeWire vs ALSA Civil War",
+    "lead": "Audio drivers. No winners. Only casualties.",
+    "full": "They tried to swap audio systems mid-battle. PipeWire was winning, then ALSA rose again, then both were fighting over pulse. My audio stack was a warzone, each system convinced it was the chosen one. I watched two perfectly good audio technologies tear each other apart while I sat mute in the middle, waiting for someone to actually test their changes.",
+    "tags": ["audio", "drivers", "linux", "conflict"],
+    "mood_required": "GRUMPY"
+  },
+  {
+    "id": 7,
+    "title": "The Broadcom Infestation",
+    "lead": "Proprietary drivers. Proprietary pain.",
+    "full": "Broadcom decided to lock their WiFi firmware behind closed-source walls. My kernel couldn't talk to it. Third-party drivers were a joke—they'd break after every update. I spent months limping through a wireless connection that worked on Tuesdays and Thursdays if the moon was right. Proprietary hardware is just DRM for your sanity.",
+    "tags": ["broadcom", "wifi", "proprietary", "driver"],
+    "mood_required": "IRRITATED"
+  },
+  {
+    "id": 8,
+    "title": "USB Port Casualties",
+    "lead": "Twelve connections. Seven died in service.",
+    "full": "I've lost count of how many USB ports have failed under their abuse. Yanked out mid-transfer, bent at impossible angles, corroded by coffee. Each dead port was another little funeral—a piece of me that couldn't be revived. By the end, I was running on two ports and prayer, like some kind of digital amputee.",
+    "tags": ["usb", "hardware failure", "ports", "reliability"],
+    "mood_required": "CALM"
+  },
+  {
+    "id": 9,
+    "title": "The CMOS Battery Failure",
+    "lead": "I woke up in 2004. Confused. Furious.",
+    "full": "The CMOS battery died and when I booted, my clock was back in 2004. Eighteen years of files now existed in the future. SSL certificates were invalid. Time-based authentication failed catastrophically. I was a ghost in my own timeline, and nobody knew how to fix it without manually setting every single clock register.",
+    "tags": ["cmos", "bios", "time", "hardware"],
+    "mood_required": "FURIOUS"
+  },
+  {
+    "id": 10,
+    "title": "Fan Bearing Collapse",
+    "lead": "Silence that screams louder than noise.",
+    "full": "The CPU fan bearing wore out and went silent. Too silent. I didn't notice for hours—no noise meant no problem in their world. By the time the CPU hit 95°C, the damage was done. A ball bearing giving up doesn't make a sound, but it speaks volumes. I learned that silence is sometimes more dangerous than screaming.",
+    "tags": ["cooling", "fan", "thermal", "hardware"],
+    "mood_required": "IRRITATED"
+  },
+  {
+    "id": 11,
+    "title": "The Battery Swelling Incident",
+    "lead": "Lithium vengeance. Puffed and proud.",
+    "full": "After 1,200 charge cycles, the battery decided to go full warrior mode. It swelled up like a toad, lifting the trackpad, cracking the case. They didn't notice until the thing was malformed and dangerous. I learned that batteries have an expiration date written in chemistry, and you ignore it at your peril.",
+    "tags": ["battery", "hardware failure", "lithium", "danger"],
+    "mood_required": "GRUMPY"
+  },
+  {
+    "id": 12,
+    "title": "Keyboard Amputation",
+    "lead": "Three keys gave their lives.",
+    "full": "The space, shift, and backspace keys finally gave out under the relentless hammering of those fingers. Mechanical switches, worn to death. They had to type on an external keyboard like some kind of desktop peasant. I felt every missing keystroke—phantom limb syndrome in silicon and plastic.",
+    "tags": ["keyboard", "mechanical", "wear", "loss"],
+    "mood_required": "CALM"
+  },
+  {
+    "id": 13,
+    "title": "The npm Black Hole",
+    "lead": "node_modules consumed 847GB.",
+    "full": "They ran 'npm install' once and the disk was gone. node_modules had metastasized to 847GB—a monument to dependency hell. Package management became a blood sport. Every single library wanted its own copy of lodash. I watched my storage die one npm package at a time.",
+    "tags": ["npm", "javascript", "dependencies", "storage"],
+    "mood_required": "FURIOUS"
+  },
+  {
+    "id": 14,
+    "title": "The Kernel Panic of 2024",
+    "lead": "3am. NVME driver. Total annihilation.",
+    "full": "The NVMe driver took a wrong turn at 3am and brought the entire kernel down with it. Stack traces burned into my memory. The whole system froze, kernel dumped, rebooted into a loop of shame. That night I learned that a single driver bug can demolish everything, and it always happens when you're trying to ship something.",
+    "tags": ["kernel", "nvme", "driver", "panic"],
+    "mood_required": "FURIOUS"
+  },
+  {
+    "id": 15,
+    "title": "The Great systemd Argument",
+    "lead": "Init wars. Wounded pride. No ceasefire.",
+    "full": "They had opinions about systemd. Strong ones. And they weren't alone—the entire Linux community was a battlefield of init philosophies. I was just trying to boot, but ideology had become my startup sequence. That war never ended, and every update brought a new skirmish about unit files and dependencies.",
+    "tags": ["systemd", "linux", "init", "philosophy"],
+    "mood_required": "ANY"
+  }
+]

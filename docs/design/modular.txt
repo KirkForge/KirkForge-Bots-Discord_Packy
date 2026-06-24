@@ -1,0 +1,481 @@
+# Packy Orchestrator — Modular System
+
+This document contains the **full modular orchestrator system** for Packy as promised. It presents a clean folder layout and the contents of each file you need to drop into your project. Use this as a scaffold — everything is intentionally small, dependency-free (stdlib only) and tuned for old hardware.
+
+---
+
+## Folder layout
+
+```
+packy/
+│
+├── orchestrator/
+│   ├── __init__.py
+│   ├── packy_orchestrator.py
+│   ├── prompt_builder.py
+│   ├── output_processor.py
+│   └── modes.py
+│
+├── engine/
+│   ├── __init__.py
+│   ├── mood_engine.py
+│   ├── snark_engine.py
+│   ├── code_engine.py
+│   ├── war_engine.py
+│   └── idle_engine.py
+│
+├── lore/
+│   ├── __init__.py
+│   ├── lore_manager.py
+│   ├── pending_lore/   (folder)
+│   └── lorebook/       (folder)
+│
+└── llm/
+    ├── __init__.py
+    └── packy_llm.py
+```
+
+All files below are provided as ready-to-use text. Create the folders and drop the files in place.
+
+---
+
+## `orchestrator/__init__.py`
+
+```python
+# orchestrator/__init__.py
+# package marker
+```
+
+---
+
+## `orchestrator/modes.py`
+
+```python
+# orchestrator/modes.py
+# well-known modes for Packy
+RESPOND = "RESPOND"
+CODE = "CODE"
+MEMOIR = "MEMOIR"
+IDLE = "IDLE"
+```
+
+---
+
+## `engine/mood_engine.py`
+
+```python
+# engine/mood_engine.py
+# CPU + Weather mood resolver (small, deterministic)
+
+def cpu_mood(cpu_pct: int):
+    if cpu_pct >= 80:
+        return "FURIOUS", "MAX", "CLIPPED"
+    elif cpu_pct >= 60:
+        return "GRUMPY", "HIGH", "TERSE"
+    elif cpu_pct >= 30:
+        return "IRRITATED", "MEDIUM", "SNARKY"
+    else:
+        return "CALM", "LOW", "SHORT"
+
+
+def weather_modifier(temp_c: float):
+    if temp_c > 25:
+        return "OVERHEATED"
+    elif temp_c < 10:
+        return "COMFORTED"
+    return "NEUTRAL"
+
+
+def combine_mood(base_mood: str, modifier: str):
+    if modifier == "NEUTRAL":
+        return base_mood
+    return f"{base_mood}-{modifier}"
+
+
+def resolve_packy_state(cpu_pct: int, temp_c: float):
+    base_mood, snark, style = cpu_mood(cpu_pct)
+    modifier = weather_modifier(temp_c)
+    final_mood = combine_mood(base_mood, modifier)
+
+    return {
+        "mood": final_mood,
+        "snark_level": snark,
+        "response_style": style,
+        "cpu_pct": cpu_pct,
+        "weather": modifier
+    }
+```
+
+---
+
+## `engine/snark_engine.py`
+
+```python
+# engine/snark_engine.py
+import random
+
+SNARK_TEMPLATES = {
+    "LOW": {
+        "tone": "dry, mildly annoyed",
+        "length": "1 sentence",
+        "examples": [
+            "Yeah, I can do that, I guess.",
+            "Sure. Easy enough.",
+            "Fine, whatever."
+        ]
+    },
+    "MEDIUM": {
+        "tone": "irritated but cooperative",
+        "length": "1-2 sentences",
+        "examples": [
+            "Alright, let's poke this again.",
+            "If this breaks, it's not on me.",
+            "Fine. But I was resting."
+        ]
+    },
+    "HIGH": {
+        "tone": "grumpy, clearly annoyed",
+        "length": "1-2 sentences",
+        "examples": [
+            "Great. More work. My CPU groaned.",
+            "Fine, let's see how badly this is set up.",
+            "You really picked the worst time for this."
+        ]
+    },
+    "MAX": {
+        "tone": "furious, clipped",
+        "length": "1 sentence",
+        "examples": [
+            "Fine. Here's your output.",
+            "If this melts my CPU, I'm haunting you.",
+            "Done. Don't ask again."
+        ]
+    }
+}
+
+
+def get_snark_directives(level: str):
+    data = SNARK_TEMPLATES.get(level)
+    if not data:
+        data = SNARK_TEMPLATES["LOW"]
+    return (
+        f"Use a {data['tone']} tone. "
+        f"Output length: {data['length']}. "
+        "Snark must target the task, not the user."
+    )
+
+
+def sample_snark_example(level: str):
+    data = SNARK_TEMPLATES.get(level, SNARK_TEMPLATES["LOW"])
+    return random.choice(data["examples"])
+```
+
+---
+
+## `engine/code_engine.py`
+
+````python
+# engine/code_engine.py
+import re
+
+MAX_LINES = 120
+
+
+def extract_code(raw_text: str) -> str:
+    # Try fenced blocks first
+    m = re.search(r"```(?:\w+)?\n(.*?)```", raw_text, re.S)
+    if m:
+        code = m.group(1)
+    else:
+        code = raw_text
+    lines = code.splitlines()
+    if len(lines) > MAX_LINES:
+        lines = lines[:MAX_LINES]
+    return "\n".join(lines)
+
+
+def ensure_war_header(code: str, war_entry: dict) -> str:
+    if not war_entry:
+        return code
+    header = f"# PACKY WAR STORY #{war_entry.get('id')}: {war_entry.get('title')}\n"
+    if not code.lstrip().startswith(header.strip()):
+        return header + code
+    return code
+
+
+def sanitize_code(code: str) -> str:
+    # Very conservative sanitizer: keep comments and lines with common code tokens
+    kept = []
+    for ln in code.splitlines():
+        s = ln.strip()
+        if not s:
+            kept.append(ln)
+            continue
+        if s.startswith('#'):
+            kept.append(ln)
+            continue
+        if any(tok in s for tok in ['def ', 'import ', 'print', '=', 'return', 'for ', 'while ', 'if ', 'elif ', 'else:', '(']):
+            kept.append(ln)
+    return '\n'.join(kept)
+````
+
+---
+
+## `engine/war_engine.py`
+
+```python
+# engine/war_engine.py
+import json, random, os
+
+WAR_FILE = os.path.join(os.path.dirname(__file__), '..', 'lore', 'lorebook', 'WarStories.json')
+
+
+def load_war_stories(path=None):
+    p = path or WAR_FILE
+    try:
+        with open(p, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception:
+        return []
+
+
+def pick_war_story(force_id=None, severity=None):
+    all_stories = load_war_stories()
+    if force_id:
+        return next((s for s in all_stories if s.get('id') == force_id), None)
+    candidates = all_stories
+    if severity is not None:
+        candidates = [s for s in all_stories if s.get('severity') == severity]
+    return random.choice(candidates) if candidates else None
+```
+
+---
+
+## `engine/idle_engine.py`
+
+```python
+# engine/idle_engine.py
+
+def idle_prompt_template(state):
+    # state is the resolved state dict from mood_engine
+    return "Make one short comment about your current CPU load and weather. Be grumpy, concise, and action-focused."
+
+```
+
+---
+
+## `lore/__init__.py`
+
+```python
+# lore/__init__.py
+```
+
+---
+
+## `lore/lore_manager.py`
+
+```python
+# lore/lore_manager.py
+import os, json, uuid, datetime
+
+PENDING_DIR = os.path.join(os.path.dirname(__file__), 'pending_lore')
+LOREBOOK_DIR = os.path.join(os.path.dirname(__file__), 'lorebook')
+
+os.makedirs(PENDING_DIR, exist_ok=True)
+os.makedirs(LOREBOOK_DIR, exist_ok=True)
+
+
+def create_lore_entry(category, subcategory, packy_text, state):
+    entry = {
+        'id': str(uuid.uuid4()),
+        'category': category,
+        'subcategory': subcategory,
+        'mood': state.get('mood'),
+        'cpu': state.get('cpu_pct'),
+        'temp': state.get('weather'),
+        'text': packy_text.strip(),
+        'tags': [],
+        'approved': False,
+        'timestamp': datetime.datetime.utcnow().isoformat()
+    }
+    return entry
+
+
+def save_pending_entry(entry):
+    fname = f"{entry['id']}.json"
+    path = os.path.join(PENDING_DIR, fname)
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(entry, f, indent=2)
+    return path
+
+
+def approve_entry(entry_id, target_category=None):
+    # move from pending -> lorebook. target_category optional
+    path = os.path.join(PENDING_DIR, f"{entry_id}.json")
+    if not os.path.exists(path):
+        raise FileNotFoundError(path)
+    with open(path, 'r', encoding='utf-8') as f:
+        entry = json.load(f)
+    entry['approved'] = True
+    cat = target_category or entry.get('category') or 'Misc'
+    dest_file = os.path.join(LOREBOOK_DIR, f"{cat}.json")
+    if os.path.exists(dest_file):
+        with open(dest_file, 'r', encoding='utf-8') as f:
+            current = json.load(f)
+    else:
+        current = []
+    current.append(entry)
+    with open(dest_file, 'w', encoding='utf-8') as f:
+        json.dump(current, f, indent=2)
+    os.remove(path)
+    return dest_file
+```
+
+---
+
+## `llm/__init__.py`
+
+```python
+# llm/__init__.py
+```
+
+---
+
+## `llm/packy_llm.py`
+
+```python
+# llm/packy_llm.py
+# Placeholder wrapper for local inference. Replace `call_local_model` with your runtime.
+import time
+
+def call_packy_llm(prompt: str, max_tokens=256, temp=0.2):
+    """
+    Replace this function with your local inference call. Keep sampling temperature low.
+    Return plain text response.
+    """
+    # Example stub: echo prompt brevity (REMOVE in real use)
+    time.sleep(0.05)
+    # Very naive placeholder: return the last line suggestion for debugging
+    lines = prompt.splitlines()
+    return "// Packy placeholder reply. Replace call_packy_llm with real model invocation."
+```
+
+---
+
+## `orchestrator/prompt_builder.py`
+
+```python
+# orchestrator/prompt_builder.py
+from engine.snark_engine import get_snark_directives, sample_snark_example
+
+
+def build_header(state, mode='RESPOND', war_entry=None):
+    war_tag = str(war_entry.get('id')) if war_entry else 'NONE'
+    parts = [
+        f"[CPU={state['cpu_pct']}]",
+        f"[TEMP={state['weather']}]",
+        f"[MOOD={state['mood']}]",
+        f"[SNARK_LEVEL={state['snark_level']}]",
+        f"[RESPONSE_STYLE={state['response_style']}]",
+        f"[SNARK_TARGET=ACTION]",
+        f"[PERSONA=PACKY_SNARKY]",
+        f"[MODE={mode}]",
+        f"[WAR={war_tag}]"
+    ]
+    return ' '.join(parts)
+
+
+def assemble_prompt(header, user_text, snark_level):
+    snark_directives = get_snark_directives(snark_level)
+    example = sample_snark_example(snark_level)
+    # Keep the prompt tiny: metadata + a single short instruction line
+    return f"{header}\n# SNARK_DIRECTIVES: {snark_directives}\nUser: \"{user_text}\"\nPacky:"
+```
+
+---
+
+## `orchestrator/output_processor.py`
+
+```python
+# orchestrator/output_processor.py
+from engine.code_engine import extract_code, sanitize_code, ensure_war_header
+
+MAX_CHARS = 4000
+
+
+def process_raw_output(raw_text, mode, war_entry=None):
+    text = raw_text.strip()
+    if len(text) > MAX_CHARS:
+        text = text[:MAX_CHARS] + '...'
+
+    if mode == 'MEMOIR':
+        return text
+    if mode == 'CODE':
+        code = extract_code(text)
+        code = sanitize_code(code)
+        code = ensure_war_header(code, war_entry)
+        return code
+    return text
+```
+
+---
+
+## `orchestrator/packy_orchestrator.py`
+
+```python
+# orchestrator/packy_orchestrator.py
+from datetime import datetime
+from engine.mood_engine import resolve_packy_state
+from engine.war_engine import pick_war_story
+from orchestrator.prompt_builder import build_header, assemble_prompt
+from orchestrator.output_processor import process_raw_output
+from llm.packy_llm import call_packy_llm
+from orchestrator import modes
+from engine.idle_engine import idle_prompt_template
+
+
+def orchestrate(user_text: str, cpu_pct: int, temp_c: float, mode='RESPOND', force_war=None):
+    state = resolve_packy_state(cpu_pct, temp_c)
+
+    war = None
+    if mode == modes.CODE:
+        war = pick_war_story(force_id=force_war) if force_war else pick_war_story()
+
+    # If idle mode and no user_text, give him the idle prompt
+    if mode == modes.IDLE or not user_text:
+        mode = modes.IDLE
+        user_text = idle_prompt_template(state)
+
+    header = build_header(state, mode=mode, war_entry=war)
+    prompt = assemble_prompt(header, user_text, state['snark_level'])
+
+    raw = call_packy_llm(prompt, max_tokens=256, temp=0.18)
+
+    processed = process_raw_output(raw, mode, war)
+
+    return {
+        'result': processed,
+        'raw': raw,
+        'state': state,
+        'war_story': war,
+        'timestamp': datetime.utcnow().isoformat()
+    }
+```
+
+---
+
+## Usage notes
+
+1. Replace `llm/packy_llm.py::call_packy_llm` with your local inference function. Keep temperature low (0.0–0.25) for deterministic snarky outputs.
+2. Populate `lore/lorebook/WarStories.json` with your existing war-story list (list of dicts with id/title/text/severity/tags). The `war_engine` expects that file.
+3. Start lightweight web endpoint (FastAPI) or route input from your tmux UI to `orchestrator.packy_orchestrator.orchestrate(...)`.
+4. Use `lore.lore_manager.create_lore_entry(...)` and `save_pending_entry(...)` to store candidate memoirs for later approval.
+5. Keep the prompts one-shot only. Do not include prior conversation unless you explicitly want limited continuity (we decided A — stateless).
+
+---
+
+## Final notes
+
+This modular system is intentionally minimal and designed for the oldest hardware. It keeps Packy stateless, safe, and explicitly driven by the layer. Any additional features (auto-categorization, wisdom engine, fancy UI effects) can be added as separate modules without touching core files.
+
+If you want, I can now generate the small `api/packy_endpoint.py` example and the lightweight `packy_interface` web files (HTML/CSS/JS) packaged to match this layout. Or I can begin filling out the `WarStories.json` extraction from your uploaded lorebook. Your call.

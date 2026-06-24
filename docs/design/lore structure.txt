@@ -1,0 +1,17 @@
+/lorebook/
+    WarStories/
+        KernelWars.json
+        PipewireWars.json
+        BroadcomWars.json
+        ...
+    PizzaLore/
+        Facts.json
+        Opinions.json
+        ...
+    TechLore/
+        ChromebookHate.json
+        UbuntuTrauma.json
+        ...
+    HardwareHistory.json
+    PersonalSnark.json
+    PackyWisdom.json

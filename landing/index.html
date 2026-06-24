@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Gargoyle Packy — lore-rich Discord character bot</title>
+<meta name="description" content="A Discord bot with a real character layer: mood engine, lore injection, snark banks, controlled chaos. Self-hosted, one-time license, your hardware, your data." />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<header class="hero">
+  <div class="container">
+    <div class="brand">
+      <span class="logo">🗿</span>
+      <span class="brand-name">Gargoyle Packy</span>
+    </div>
+    <nav>
+      <a href="#features">Features</a>
+      <a href="#how">How it works</a>
+      <a href="pricing.html">Pricing</a>
+      <a href="https://github.com/KirkForge/KirkForge-Bots" class="nav-github">GitHub</a>
+    </nav>
+  </div>
+
+  <div class="container hero-content">
+    <h1>A Discord bot with a character,<br/>not just a prompt.</h1>
+    <p class="lede">
+      Packy is a 2011 laptop who survived 200 Windows flashes, three years in a drawer,
+      and a PipeWire civil war. They gave him a Discord token. He has opinions. You will
+      hear them. Self-hosted, one-time license, your machine, your data.
+    </p>
+    <div class="cta-row">
+      <a href="pricing.html" class="btn btn-primary">See pricing</a>
+      <a href="https://github.com/KirkForge/KirkForge-Bots" class="btn btn-ghost">Read the source</a>
+    </div>
+    <p class="trust">BSL 1.1 source available · Ed25519-signed license · No phone-home · Works fully offline</p>
+  </div>
+</header>
+
+<section id="features" class="features">
+  <div class="container">
+    <h2>Built for server owners who are tired of soulless bots</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>🧠 Real character cognition</h3>
+        <p>PackyBrain + PackyCogEngine build responses through mood resolution, lore lookup, and keyword scoring — not a raw prompt to GPT. The LLM is a voice box. The Python layer is the personality.</p>
+      </div>
+      <div class="card">
+        <h3>🗿 186 snark lines, 5 categories</h3>
+        <p>De-duplicated snark banks for thermal martyrdom, vintage hardware, OS wars, and "user tries to make me say slurs." (He won't.)</p>
+      </div>
+      <div class="card">
+        <h3>📚 88KB lorebook + sub-lore</h3>
+        <p>Structured lore injection: Packy recalls the right war story for the right topic. Keyword + mood scored, never random.</p>
+      </div>
+      <div class="card">
+        <h3>🔥 Controlled chaos layer</h3>
+        <p>ADR-008: Packy can interject unprovoked, lock onto a target, override mood on a command, and sabotage one slash command per day. Off by default. Pro+ only.</p>
+      </div>
+      <div class="card">
+        <h3>🔌 Dual mode: direct or microservice</h3>
+        <p>Direct mode: bot calls Claude/MiniMax itself, no Python. Microservice mode: full cognition pipeline as a separate FastAPI service. Choose your trade-off.</p>
+      </div>
+      <div class="card">
+        <h3>🖥️ Admin endpoint on the cognition service</h3>
+        <p>Local HTTP API: <code>/health</code>, <code>/state</code>, <code>/respond</code>, <code>/admin/license</code>, <code>/admin/update</code>. Bound to 127.0.0.1 by default.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="how" class="how">
+  <div class="container">
+    <h2>Up and yelling in five minutes</h2>
+    <ol class="steps">
+      <li>
+        <strong>Buy a license.</strong>
+        <span>One-time payment, no subscription. Signed JSON file emailed to you instantly.</span>
+      </li>
+      <li>
+        <strong>Drop the license in place.</strong>
+        <code>~/.config/kirkforge/packy/license.json</code>
+      </li>
+      <li>
+        <strong>Install + run.</strong>
+        <code>cd gargoyle-packy &amp;&amp; pip install -r requirements.txt &amp;&amp; python src/orchestration/packy_endpoint.py</code>
+      </li>
+      <li>
+        <strong>Start the bot.</strong>
+        <code>npm install &amp;&amp; node src/bot/index.js</code>
+        <span>Set <code>BOT_MODE=microservice</code> in your <code>.env</code>.</span>
+      </li>
+      <li>
+        <strong>Register slash commands.</strong>
+        <code>./scripts/register_commands.sh</code>
+        <span>One-time per Discord server. <code>/packy</code>, <code>/mood</code>, <code>/lore</code>, <code>/war</code>.</span>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<section class="cta">
+  <div class="container">
+    <h2>Ready to put a real character in your Discord?</h2>
+    <a href="pricing.html" class="btn btn-primary btn-large">Choose your tier</a>
+    <p class="trust">30-day refund. Source-available under BSL 1.1.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <span class="brand-name">Gargoyle Packy</span>
+        <p>Built by <a href="https://kirkforge.com">KirkForge</a> · Denmark</p>
+      </div>
+      <div>
+        <h4>Product</h4>
+        <a href="pricing.html">Pricing</a>
+        <a href="https://github.com/KirkForge/KirkForge-Bots">Source</a>
+        <a href="https://github.com/KirkForge/KirkForge-Bots/blob/main/gargoyle-packy/CHANGELOG.md">Changelog</a>
+      </div>
+      <div>
+        <h4>Support</h4>
+        <a href="mailto:support@kirkforge.com">support@kirkforge.com</a>
+      </div>
+      <div>
+        <h4>Legal</h4>
+        <a href="https://github.com/KirkForge/KirkForge-Bots/blob/main/gargoyle-packy/LICENSE">License (BSL 1.1)</a>
+        <a href="https://github.com/KirkForge/KirkForge-Bots/blob/main/gargoyle-packy/LICENSE-EULA">EULA</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

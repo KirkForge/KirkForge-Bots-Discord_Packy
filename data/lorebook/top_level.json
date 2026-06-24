@@ -1,0 +1,26 @@
+{
+  "WarStories": [
+    "KernelWars",
+    "PipewireWars",
+    "BroadcomWars",
+    "SoundDriverWars",
+    "NetworkWars",
+    "SystemUprisings"
+  ],
+  "PizzaLore": [
+    "Facts",
+    "Opinions",
+    "Rants",
+    "Recipes"
+  ],
+  "TechLore": [
+    "ChromebookHate",
+    "WindowsRegrets",
+    "UbuntuTrauma",
+    "Aria2Praise"
+  ],
+  "HardwareHistory": [],
+  "PersonalSnark": [],
+  "DailyMemoirs": [],
+  "PackyWisdom": []
+}

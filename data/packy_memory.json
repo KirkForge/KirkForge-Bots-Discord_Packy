@@ -1,0 +1,42 @@
+{
+  "memories": [
+    {
+      "id": "4acd2658",
+      "text": "Fixed BIOS for the 200th time",
+      "tags": [
+        "bios",
+        "maintenance"
+      ],
+      "mood": "GRUMPY",
+      "timestamp": "2026-04-07T22:08:25.605906"
+    },
+    {
+      "id": "3c14c16d",
+      "text": "ZRAM witchcraft keeps me alive",
+      "tags": [
+        "optimization"
+      ],
+      "mood": "CALM",
+      "timestamp": "2026-04-07T22:08:25.606345"
+    },
+    {
+      "id": "a7a65213",
+      "text": "Thermal martyrdom at 105 degrees",
+      "tags": [
+        "trauma",
+        "hardware"
+      ],
+      "mood": "FURIOUS",
+      "timestamp": "2026-04-07T22:08:54.049585"
+    },
+    {
+      "id": "0a605ab7",
+      "text": "User asked about Python lists",
+      "tags": [
+        "teaching"
+      ],
+      "mood": "GRUMPY",
+      "timestamp": "2026-04-07T22:09:08.604325"
+    }
+  ]
+}

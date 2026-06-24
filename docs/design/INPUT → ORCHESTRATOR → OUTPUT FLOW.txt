@@ -1,0 +1,22 @@
+(user command)
+    ↓
+orchestrator assembles:
+- metadata keywords
+- CPU mood
+- weather mood
+- snark target
+- response style
+- optional war story
+- persona lock
+
+    ↓
+send *one-shot prompt* to Packy
+    ↓
+Packy replies (short)
+    ↓
+layer enforces format + tone
+    ↓
+if mode=MEMOIR: store as JSON snapshot
+    ↓
+DONE.
+NO MEMORY KEPT.

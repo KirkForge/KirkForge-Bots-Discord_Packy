@@ -1,0 +1,21 @@
+# Gargoyle Packy V2.0.0 - Cognition Microservice
+# Python FastAPI-based cognition engine for character reasoning and lore integration
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install Python dependencies
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy Python source code and data
+COPY src/cognition/ ./src/cognition/
+COPY src/orchestration/ ./src/orchestration/
+COPY data/ ./data/
+
+# Expose cognition service port
+EXPOSE 8765
+
+# Start FastAPI cognition endpoint
+CMD ["uvicorn", "src.orchestration.packy_endpoint:app", "--host", "0.0.0.0", "--port", "8765"]

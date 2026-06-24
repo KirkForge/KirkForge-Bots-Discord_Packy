@@ -1,0 +1,32 @@
+packy/
+│
+├── orchestrator/
+│   ├── __init__.py
+│   ├── packy_orchestrator.py
+│   ├── prompt_builder.py
+│   ├── output_processor.py
+│   └── modes.py
+│
+├── engine/
+│   ├── __init__.py
+│   ├── mood_engine.py
+│   ├── snark_engine.py
+│   ├── code_engine.py
+│   ├── war_engine.py
+│   └── idle_engine.py
+│
+├── lore/
+│   ├── __init__.py
+│   ├── lore_manager.py
+│   ├── pending_lore/
+│   └── lorebook/
+│       ├── WarStories/
+│       ├── PizzaLore/
+│       ├── TechLore/
+│       ├── HardwareHistory.json
+│       ├── PersonalSnark.json
+│       └── PackyWisdom.json
+│
+└── llm/
+    ├── __init__.py
+    └── packy_llm.py

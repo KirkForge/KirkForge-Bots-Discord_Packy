@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  cognition:
+    build:
+      context: .
+      dockerfile: Dockerfile.cognition
+    container_name: gargoyle-packy-cognition
+    ports:
+      - "8765:8765"
+    volumes:
+      - ./data:/app/data
+    env_file: .env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8765/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: gargoyle-packy-bot
+    depends_on:
+      cognition:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      BOT_MODE: microservice
+      COGNITION_URL: http://cognition:8765
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped

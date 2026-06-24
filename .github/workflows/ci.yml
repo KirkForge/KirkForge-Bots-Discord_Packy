@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main]
+
+jobs:
+  smoke:
+    name: Smoke Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run smoke test
+        run: node test/smoke.js
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run ESLint
+        run: npm run lint || true
+
+  python-venv:
+    name: Python Cognition (import check)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python deps
+        run: |
+          pip install -r src/orchestration/requirements.txt 2>/dev/null || true
+          pip install fastapi uvicorn httpx pydantic psutil 2>/dev/null || true
+
+      - name: Check Python syntax
+        run: |
+          python3 -m py_compile src/orchestration/packy_endpoint.py || true
+          python3 -m py_compile src/orchestration/packy_orchistrator.py || true
+          python3 -m py_compile src/orchestration/small_orchistrator.py || true
+
+      - name: Run Python smoke test
+        run: python3 test/smoke.py

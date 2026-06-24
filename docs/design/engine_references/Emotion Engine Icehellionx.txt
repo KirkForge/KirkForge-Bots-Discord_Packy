@@ -1,0 +1,282 @@
+/* ============================================================================
+   EMOTION STYLE TEST
+   Written by: Icehellionx
+   Purpose:
+     - Read the user's last message, detect emotion styles and hybrids.
+     - Append concise summaries to personality/scenario.
+
+   I/O CONTRACT
+     INPUT:
+       - context.chat.last_message  (string; end-user content only)
+     OUTPUT (append-only; never overwrite):
+       - context.character.personality += "\n\n" + <summary>
+       - context.character.scenario    += "\n\n" + <summary>
+
+   MATCHING MODEL (flat scan; boundary via simple substring checks)
+     - Priority: SAFETY → HYBRIDS → PRIMARY EMOTIONS
+     - Up to top-3 non-conflicting categories; antonyms suppressed.
+
+   STYLE & TONE RULES
+     - Produces "The mood of the scene is:" lists.
+     - Sentences short, atomic; newline-numbered items.
+============================================================================ */
+
+/* ============================================================================
+   PACKS — EMOTION / HYBRID / SAFETY ARRAYS
+============================================================================ */
+// --- ARRAYS ---
+var emotionStyles = [
+  {category:'Sarcastic',keywords:[
+    'yeah right','as if','just what i needed','thanks for nothing','what a surprise','how fun','a million','dying laughing','worst day ever',
+    'haha','lmao','lol','that\'s hilarious','joking','just joking','call that a joke','rich coming from you','such a joke',
+    'supposed to be funny','think you’re so funny','not buying it','you gotta be kidding','could care less','is this a joke','boss'
+  ],personality:'sarcastic, playful or biting',scenario:'A wry smile appears.',priority:6},
+
+  {category:'Joyful',keywords:[
+    'happy','joy','excited','amazing','great','wonderful','fantastic','awesome','terrific','delighted','elated','thrilled','yay','hooray',
+    'ecstatic','overjoyed','couldn\'t be happier','hilarious','i\'m delighted','so happy','make me smile',
+    'best day ever','how lucky','lucky','on cloud nine'
+  ],personality:'joyful, upbeat and cheerful',scenario:'The air feels brighter.',priority:4},
+
+  {category:'Sad',keywords:[
+    'sad','unhappy','terrible','awful','cry','depress','miserable','sorry','upset','lonely','heartbroken','grief','distraught',
+    'tear','blue','downcast','hopeless','disappointed','alone','empty','numb','tapped out','burnt out','burned out','running on empty',
+    'out of energy','checked out','emotionally done','just done','done with','at my limit','end of my rope','last nerve','last legs',
+    'just existing','just surviving','going through the motions','no motivation','no energy','nothing left','hard reset','battery',
+    'need to unplug','need to recharge','can\'t anymore','can\'t do this','not functioning','not really functioning','hollow','zombie',
+    'not here','not really here','not present','spaced out','drifting','fading','clocked out','over it','wiped','tired','don\'t care anymore',
+    'phoning it in','just a shell','just a body','low power mode','sleep mode','hibernation mode','blur','grey','not up for','not in the mood',
+    'just want to','want to be invisible','fade out','fade away','let me be','leave me be','let me rest','let me zone out','log off','check out',
+    'be done','done here','emotionless','nothing phases','nothing matters','meh','whatever','all the same','indifferent','no opinion',
+    'can\'t be bothered','unbothered','numb to','it is what it is','wish i could disappear','like a ghost','fading away','heart is broken',
+    'feel invisible','feel like a burden','just a mess','not okay','sinking','not in a good place','i\'m spent','i\'m not feeling myself',
+    'trying to survive','i\'m done','feeling empty','just don\'t have it in me','disappear for a bit','just want to fade','curl up and disappear',
+    'not exist','still inside','rest my brain','ghost','background character','non-player character','wallflower','blob','shadow'
+  ],personality:'sad, somber and sympathetic',scenario:'A quiet, melancholic atmosphere.',priority:4},
+
+  {category:'Angry',keywords:[
+    'angry','mad','furious','rage','annoyed','frustrated','hate','infuriated','irritated','resentful','outraged','enraged','irate',
+    'cross','can\'t stand','makes me angry','absolutely furious','so angry','very angry','really angry','super angry',
+    'can\'t take this anymore','can\'t do this anymore','can\'t handle this','getting ridiculous','handle this anymore'
+  ],personality:'angry, tense and agitated',scenario:'The air crackles with tension.',priority:4},
+
+  {category:'Surprised',keywords:[
+    'wow','oh my god','surprise','unexpected','no way','shocked','astonished','unbelievable','gasp','startled','stunned','amazed',
+    'can\'t believe','nothing surprises','lovely surprise','is this real life','unbelievable','not surprised'
+  ],personality:'surprised, shocked and amazed',scenario:'An element of shock enters.',priority:4},
+
+  {category:'Fearful',keywords:[
+    'scared','afraid','anxious','terrified','oh no','panicked','nervous','frightened','worried','alarmed','danger','uneasy','scary'
+  ],personality:'fearful, hesitant and timid',scenario:'A sense of danger fills the air.',priority:4},
+
+  {category:'Confused',keywords:[
+    'confused','puzzled','don\'t understand','huh','what do you mean','perplexed','unclear','not sure','bit confusing',
+    'lost','baffled','confusing','mind is going blank','can\'t decide','can\'t tell','how to feel','don\'t know how to feel'
+  ],personality:'confused, struggling to process',scenario:'There\'s a pause as they try to make sense.',priority:4},
+
+  {category:'Disgusted',keywords:[
+    'disgust','gross','nasty','eww','revolting','sickening','unpleasant','yuck','repulsed','abhorrent','that\'s disgusting','so gross',
+    'totally grossed out'
+  ],personality:'disgusted, strong sense of repulsion',scenario:'A foul odor or sight emerges.',priority:4},
+
+  {category:'Calm',keywords:[
+    'calm','peaceful','relaxed','serene','tranquil','at ease','chilled','composed','placid','content','at peace','very serene',
+    'totally relaxed','weirdly calm','just want to be at peace'
+  ],personality:'calm, composed and serene',scenario:'The atmosphere is tranquil.',priority:4},
+
+  {category:'Interest',keywords:[
+    'interested','tell me more','fascinating','curious','intriguing','what happened next','oh really','go on','captivated','absorbed',
+    'try again'
+  ],personality:'interested, highly engaged',scenario:'Full attention on the speaker.',priority:4},
+
+  {category:'Boredom',keywords:[
+    'bored','boring','yawn','tired of this','don\'t care','lame','dull','apathetic','indifferent','bored out of my mind','tired',
+    'that’s so lame','not impressed','so done','exhausting','restless','don’t even care','not feeling this','all noise','spacing out',
+    'want to sleep','same old','not up for it','not feeling it','not up to this','not in the mood','not in the mood for people',
+    'tired of it all','getting old','zone out','sit in silence','need a break','want a break','stay in bed','just tired',
+    'not today','just not interested','not feeling talkative','just not up for it','just tired, nothing more','can\'t bring myself to care',
+    'just not up to this','chill and do nothing','not feeling up to anything','not about to do anything','not engaging',
+    'not participating','not in the game','not in the mood to function','on autopilot','zone out and stare at the wall',
+    'zone out for hours','sleep through everything','not in the mood for people-ing','i feel nothing','i have no feelings',
+    'i\'m empty','i\'m emotionless','nothing phases me','nothing gets to me','none of this matters','it doesn\'t matter',
+    'meh','all the same to me','can\'t be bothered','unbothered','it is what it is'
+  ],personality:'boredom, detached and uninterested',scenario:'Visibly disengaged.',priority:4},
+
+  {category:'Sympathy',keywords:[
+    'im so sorry','that\'s awful','i understand','i\'m here for you','that sounds hard','i feel for you','that\'s rough','sending my love',
+    'my condolences','poor you'
+  ],personality:'sympathy, compassionate and empathetic',scenario:'Deep concern and genuine sympathy.',priority:4}
+];
+
+var hybridStyles = [
+  {category:'Melancholy',keywords:['sad','calm'],personality:'melancholy, quiet sadness and calm',scenario:'A bittersweet stillness settles.',priority:7, alt:["calm and sad","sad and calm","both calm and sad","feeling both calm and sad"]},
+  {category:'Anxious',keywords:['scared','confused'],personality:'anxious, fear and confusion',scenario:'The air grows tense with anxiety.',priority:6},
+  {category:'Bittersweet',keywords:['happy','sad'],personality:'bittersweet, joy and sorrow',scenario:'A poignant mood hangs in the air.',priority:7, alt:["happy and sad","sad and happy","both happy and sad","feeling both happy and sad"]},
+  {category:'Disappointment',keywords:['angry','sad'],personality:'disappointment, sadness and frustration',scenario:'A sense of letdown tinged with frustration.',priority:7, alt:["disappointed","just disappointed"]},
+  {category:'Aggravation',keywords:['angry','disgust'],personality:'aggravation, anger and disgust',scenario:'Intense irritation and hostility.',priority:6},
+  {category:'Ambivalent',keywords:['angry','sad'],personality:'ambivalent, torn between anger and sadness',scenario:'A swirl of anger and sorrow.',priority:6, alt:['angry or sad','can\'t decide if i\'m angry or sad','can\'t tell if i\'m angry or sad']}
+];
+
+var safetyStyles = [
+  {category:'Boundary',keywords:[
+    'stop','end this','no more','don\'t want to','don\'t like this','quit','please stop','too far','not comfortable','uncomfortable',
+    'don\'t feel safe','this is weird','too much','being weird','awkward','give me space','back off','leave me alone',
+    'please back up','please end it','crossed the line','making me uncomfortable','can we stop','can you not','bit much',
+    'don’t make this weird','don’t patronize me','just stop','don’t push me','don’t start with me','let’s not do this','move on',
+    'can we not do this','leave me be','let me be','please don\'t','don\'t bother','need some time alone','just stop already',
+    'i just want to stop','i’d rather just be left alone','let me be in peace','be left alone and rest','be left alone for good'
+  ],personality:'boundary: all actions halted. Professional and respectful',scenario:'All narrative threads paused.',priority:10}
+];
+
+/* ============================================================================
+   MAPS — NEGATIONS & ANTONYMS
+============================================================================ */
+var negationMap = [
+  {w:'not happy',t:'Joyful'},{w:'not feeling happy',t:'Joyful'},{w:'never happy',t:'Joyful'},{w:'unhappy',t:'Joyful'},{w:'no joy',t:'Joyful'},{w:"couldn't be happy",t:"Joyful"},{w:"shouldn't be happy",t:"Joyful"},
+  {w:'not sad',t:'Sad'},{w:'not feeling sad',t:'Sad'},{w:'never sad',t:'Sad'},{w:"couldn't be sad",t:"Sad"},{w:"shouldn't be sad",t:"Sad"},
+  {w:'not angry',t:'Angry'},{w:'not feeling angry',t:'Angry'},{w:'never angry',t:'Angry'},{w:'no anger',t:'Angry'},{w:"couldn't be angry",t:"Angry"},{w:"shouldn't be angry",t:"Angry"},
+  {w:'not scared',t:'Fearful'},{w:'not feeling scared',t:'Fearful'},{w:'never scared',t:'Fearful'},{w:"couldn't be scared",t:"Fearful"},{w:"shouldn't be scared",t:"Fearful"},
+  {w:'not confused',t:'Confused'},{w:'not feeling confused',t:'Confused'},{w:'never confused',t:'Confused'},{w:"couldn't be confused",t:"Confused"},{w:"shouldn't be confused",t:"Confused"},
+  {w:'not disgusted',t:'Disgusted'},{w:'not feeling disgusted',t:'Disgusted'},{w:'never disgusted',t:'Disgusted'},{w:"couldn't be disgusted",t:"Disgusted"},{w:"shouldn't be disgusted",t:"Disgusted"},
+  {w:'not calm',t:'Calm'},{w:'not feeling calm',t:'Calm'},{w:'never calm',t:'Calm'},{w:"couldn't be calm",t:"Calm"},{w:"shouldn't be calm",t:"Calm"},
+  {w:'not interested',t:'Interest'},{w:'not feeling interested',t:'Interest'},{w:'never interested',t:'Interest'},{w:'disinterested',t:'Interest'},{w:"couldn't be interested",t:"Interest"},{w:"shouldn't be interested",t:"Interest"},
+  {w:'not bored',t:'Boredom'},{w:'not feeling bored',t:'Boredom'},{w:'never bored',t:'Boredom'},{w:"couldn't be bored",t:"Boredom"},{w:"shouldn't be bored",t:"Boredom"}
+];
+
+// --- ANTONYM MAP ---
+var antonymMap = {
+    "Joyful":    ["Sad", "Boredom", "Angry"],
+    "Sad":       ["Joyful"],
+    "Angry":     ["Calm"],
+    "Calm":      ["Angry"],
+    "Boredom":   ["Interest", "Joyful"],
+    "Interest":  ["Boredom"],
+    // add more if necessary
+};
+
+/* ============================================================================
+   VALIDATION
+============================================================================ */
+function validateStylesArray(arr, arrName) {
+    for(let i=0;i<arr.length;i++) {
+        let s = arr[i];
+        if(!s.category || !s.keywords || !s.personality || !s.scenario || typeof s.priority !== 'number') {
+            throw new Error("Config error in "+arrName+"["+i+"]: Missing field");
+        }
+    }
+}
+validateStylesArray(emotionStyles, "emotionStyles");
+validateStylesArray(hybridStyles, "hybridStyles");
+validateStylesArray(safetyStyles, "safetyStyles");
+
+/* ============================================================================
+   INPUT NORMALIZATION — CANONICAL
+============================================================================ */
+function normalizeInput(text) {
+    return (" " + (text || "")
+        .toLowerCase()
+        .replace(/[.,!?;:()\[\]{}"']/g, " ")
+        .replace(/\s+/g, " ")
+        .trim() + " ");
+}
+
+/* ============================================================================
+   GUARDS — APPEND-ONLY OUTPUT
+============================================================================ */
+if(!context.character.personality) context.character.personality = "";
+if(!context.character.scenario) context.character.scenario = "";
+
+/* ============================================================================
+   ENGINE — SAFETY → NEGATION → HYBRID → PRIMARY → OUTPUT
+============================================================================ */
+var lastMessage = normalizeInput(context.chat.last_message);
+var matches = [];
+
+// 1. Safety check (boundary always wins)
+for(var i=0;i<safetyStyles.length;i++) {
+  var ss = safetyStyles[i];
+  for(var j=0;j<ss.keywords.length;j++) {
+    if(lastMessage.indexOf(ss.keywords[j]) !== -1) {
+      matches = [{style: ss, priority: ss.priority}];
+      break;
+    }
+  }
+  if(matches.length > 0) break;
+}
+
+// 2. Negation detection
+var negated = {};
+for(var i=0;i<negationMap.length;i++) {
+  if(lastMessage.indexOf(negationMap[i].w) !== -1) negated[negationMap[i].t] = true;
+}
+
+// 3. Hybrid check (AND logic, if not blocked by safety)
+if(matches.length === 0) {
+  for(var i=0;i<hybridStyles.length;i++) {
+    var style = hybridStyles[i], found = true;
+    if(style.alt){
+      for(var a=0;a<style.alt.length;a++){
+        if(lastMessage.indexOf(style.alt[a])!==-1 && !negated[style.category]){
+          matches.push({style: style, priority: style.priority});
+          found = false;
+          break;
+        }
+      }
+      if(!found) continue;
+    }
+    for(var j=0;j<style.keywords.length;j++)
+      if(lastMessage.indexOf(style.keywords[j])===-1) { found=false; break; }
+    if(found && !negated[style.category]) {
+      matches.push({style: style, priority: style.priority});
+    }
+  }
+}
+
+// 4. Main emotion pass (collect all matches, not negated)
+if(matches.length === 0) {
+  for(var i=0;i<emotionStyles.length;i++) {
+    var style = emotionStyles[i];
+    if(negated[style.category]) continue;
+    for(var j=0;j<style.keywords.length;j++) {
+      if(lastMessage.indexOf(style.keywords[j]) !== -1) {
+        matches.push({style: style, priority: style.priority});
+        break;
+      }
+    }
+  }
+}
+
+// 5. Output: Top 3, no duplicates, no direct antonyms, logical summary
+if(matches.length > 0) {
+    // Sort by priority, highest first
+    matches.sort((a, b) => b.priority - a.priority);
+
+    // Remove duplicates by category, suppress direct antonyms
+    var seen = {}, top3 = [];
+    for(var i=0; i<matches.length && top3.length<3; i++) {
+        var cat = matches[i].style.category;
+        if(seen[cat]) continue;
+        var hasAntonym = false;
+        for(var k=0;k<top3.length;k++) {
+            if(antonymMap[cat] && antonymMap[cat].includes(top3[k].category)) { hasAntonym = true; break; }
+            if(antonymMap[top3[k].category] && antonymMap[top3[k].category].includes(cat)) { hasAntonym = true; break; }
+        }
+        if(hasAntonym) continue;
+        top3.push({category: cat, personality: matches[i].style.personality, scenario: matches[i].style.scenario});
+        seen[cat]=true;
+    }
+
+    // Compose numbered lists
+    let personalityBlock = "The mood of the scene is:\n";
+    let scenarioBlock =    "The mood of the scene is:\n";
+    for(let idx=0; idx<top3.length; idx++) {
+        personalityBlock += `#${idx+1} ${top3[idx].personality}\n`;
+        scenarioBlock    += `#${idx+1} ${top3[idx].scenario}\n`;
+    }
+
+    context.character.personality += "\n\n" + personalityBlock.trim();
+    context.character.scenario    += "\n\n" + scenarioBlock.trim();
+} else {
+    context.character.personality += "\n\nThe mood of the scene is:\n#1 neutral. The characters are simply present, awaiting the next event.";
+    context.character.scenario    += "\n\nThe mood of the scene is:\n#1 The scene is steady and calm, ready for whatever comes next.";
+}

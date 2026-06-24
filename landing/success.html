@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Thanks — Gargoyle Packy</title>
+<meta name="description" content="Your purchase is complete. Here's what happens next." />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<header class="hero compact">
+  <div class="container">
+    <div class="brand">
+      <span class="logo">🗿</span>
+      <a href="index.html" class="brand-name">Gargoyle Packy</a>
+    </div>
+    <nav>
+      <a href="index.html#features">Features</a>
+      <a href="index.html#how">How it works</a>
+      <a href="pricing.html">Pricing</a>
+      <a href="https://github.com/KirkForge/KirkForge-Bots" class="nav-github">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<section class="success">
+  <div class="container narrow">
+    <h1>🎉 Thanks. Your license is on its way.</h1>
+    <p class="lede">
+      We've sent a signed <code>license.json</code> to the email you used at checkout.
+      You can also re-download it any time from the customer portal:
+    </p>
+    <a id="portal-link" href="#" class="btn btn-primary btn-large">Open the customer portal</a>
+    <p class="muted small">
+      Lost the link? Email <a href="mailto:support@kirkforge.com">support@kirkforge.com</a> and we'll resend.
+    </p>
+
+    <h2>Next steps</h2>
+    <ol class="steps">
+      <li>
+        <strong>Save your license.</strong>
+        <span>Drop the attached <code>license.json</code> at <code>~/.config/kirkforge/packy/license.json</code> on the machine that will run Packy.</span>
+      </li>
+      <li>
+        <strong>Install + start the cognition service.</strong>
+        <pre><code>git clone https://github.com/KirkForge/KirkForge-Bots
+cd KirkForge-Bots/gargoyle-packy
+pip install -r requirements.txt
+python src/orchestration/packy_endpoint.py</code></pre>
+      </li>
+      <li>
+        <strong>Start the Discord bot.</strong>
+        <pre><code>npm install
+cp .env.example .env  # fill in DISCORD_TOKEN, ANTHROPIC_API_KEY
+node src/bot/index.js</code></pre>
+      </li>
+      <li>
+        <strong>Register slash commands.</strong>
+        <span>One-time per Discord server: <code>./scripts/register_commands.sh</code>. Then try <code>/mood</code> in your server.</span>
+      </li>
+    </ol>
+
+    <p class="muted small">
+      Need help? Reply to the license email — it comes from a real human who has read your support contract.
+    </p>
+  </div>
+</section>
+
+<script>
+  // The portal link is filled in client-side from ?session_id=... so the
+  // success page is static and cacheable. Stripe sends the customer back
+  // here with ?session_id={CHECKOUT_SESSION_ID}.
+  (function () {
+    var params = new URLSearchParams(window.location.search);
+    var sid = params.get("session_id");
+    if (sid) {
+      var el = document.getElementById("portal-link");
+      el.href = "https://sales.kirkforge.com/packy/portal?session_id=" + encodeURIComponent(sid);
+      el.textContent = "Open the customer portal";
+    }
+  })();
+</script>
+
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <span class="brand-name">Gargoyle Packy</span>
+        <p>Built by <a href="https://kirkforge.com">KirkForge</a> · Denmark</p>
+      </div>
+      <div>
+        <h4>Product</h4>
+        <a href="index.html#features">Features</a>
+        <a href="https://github.com/KirkForge/KirkForge-Bots">Source</a>
+        <a href="https://github.com/KirkForge/KirkForge-Bots/blob/main/gargoyle-packy/CHANGELOG.md">Changelog</a>
+      </div>
+      <div>
+        <h4>Support</h4>
+        <a href="mailto:support@kirkforge.com">support@kirkforge.com</a>
+      </div>
+      <div>
+        <h4>Legal</h4>
+        <a href="https://github.com/KirkForge/KirkForge-Bots/blob/main/gargoyle-packy/LICENSE">License (BSL 1.1)</a>
+        <a href="https://github.com/KirkForge/KirkForge-Bots/blob/main/gargoyle-packy/LICENSE-EULA">EULA</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

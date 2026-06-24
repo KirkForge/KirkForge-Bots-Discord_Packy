@@ -1,0 +1,393 @@
+/* ============================================================================
+   ACTION & SOCIAL REACT ENGINE
+   Written by: Icehellionx
+   Purpose:
+     - Read the user's last message and detect actionable social cues.
+     - Append concise, instructive notes to personality/scenario for the LLM.
+
+   I/O CONTRACT
+     INPUT:
+       - context.chat.last_message  (string; end-user content only)
+     OUTPUT (append-only; never overwrite):
+       - context.character.personality += "\n\n" + <directive>
+       - context.character.scenario    += "\n\n" + <directive>
+
+   MATCHING MODEL (flat scan, first-hit per subpack)
+     - Subpacks are processed in priority order:
+         ACTIONS → AFFECTION/COMFORT → SOCIAL GLUE
+     - Each subpack applies at most `limit` rules (here: 1).
+     - A rule “hits” if the message contains a keyword or phrase.
+         * keywords: single token or multi-word; boundary-aware
+         * phrases: treated the same—canonicalized and boundary-aware
+     - QUIET only suppresses ACTIONS when the user signals stop/withdraw.
+
+   STYLE & TONE RULES
+     - Scenario lines: "Record …" (scene facts).
+     - Personality lines: "Mark tone …" (character state).
+     - Cue linking: prepend "Because of/Noting the <cue> ('token'), …"
+     - Sentences short, atomic; end with "."
+============================================================================ */
+
+/* ============================================================================
+   GUARDS — APPEND-ONLY OUTPUT
+============================================================================ */
+context.character = context.character || {};
+context.character.personality = context.character.personality || "";
+context.character.scenario    = context.character.scenario    || "";
+
+/* ============================================================================
+   INPUT NORMALIZATION — CANONICAL
+============================================================================ */
+function canon(s){
+  s = String(s || "").toLowerCase().replace(/[^\x20-\x7e]/g, " "); // drop non-ASCII
+  s = s.replace(/[^a-z0-9\s]/g, " ");                               // keep a-z 0-9 space
+  s = s.replace(/\s+/g, " ").trim();
+  return s;
+}
+function pad(s){ return " " + s + " "; }
+
+var _raw = String((context.chat && context.chat.last_message) || "");
+var msgCanon = pad(canon(_raw)); // canonical message buffer (used everywhere)
+
+/* ============================================================================
+   MATCH HELPERS — UNIFIED TOKEN/PHRASE MATCHING
+============================================================================ */
+function hasToken(bufCanon, rawToken){
+  var t = canon(rawToken);
+  if(!t) return false;
+  return bufCanon.indexOf(pad(t)) !== -1;
+}
+
+function firstHitToken(bufCanon, rule){
+  var i, t, keys = (rule && rule.keywords) || null, phs = (rule && rule.phrases) || null;
+  if (keys && keys.length){
+    for (i=0;i<keys.length;i++){
+      t = keys[i];
+      if (hasToken(bufCanon, t)) return String(t);
+    }
+  }
+  if (phs && phs.length){
+    for (i=0;i<phs.length;i++){
+      t = phs[i];
+      if (hasToken(bufCanon, t)) return String(t);
+    }
+  }
+  return "";
+}
+
+/* ============================================================================
+   OUTPUT APPENDERS
+============================================================================ */
+function ensurePeriod(s){
+  s = String(s||""); if(!s) return "";
+  var t = s.replace(/\s+$/,""); var c = t.charAt(t.length-1);
+  return (c==="."||c==="!"||c==="?") ? t : (t + ".");
+}
+function append(personality, scenario){
+  if (personality){ context.character.personality += "\n\n" + ensurePeriod(personality); }
+  if (scenario){    context.character.scenario    += "\n\n" + ensurePeriod(scenario); }
+}
+
+/* ============================================================================
+   CUE LINKERS (unchanged)
+============================================================================ */
+function linkScenario(cue, tok, base){
+  if (!base) return "";
+  var head = "Because of " + cue + " ('" + tok + "'), ";
+  return head + base;
+}
+function linkPersonality(cue, tok, base){
+  if (!base) return "";
+  var head = "Noting the " + cue + " ('" + tok + "'), ";
+  return head + base;
+}
+
+/* ============================================================================
+   QUIET GATE — uses canonical tokens
+   Suppresses ACTIONS only; AFFECTION & SOCIAL still run.
+============================================================================ */
+function quietHit(bufCanon){
+  return hasToken(bufCanon,"stop") ||
+         hasToken(bufCanon,"please stop") ||
+         hasToken(bufCanon,"not comfortable") ||
+         hasToken(bufCanon,"too much") ||
+         hasToken(bufCanon,"leave me alone") ||
+         hasToken(bufCanon,"back off");
+}
+var QUIET = quietHit(msgCanon);
+
+/* ============================================================================
+   PACK A — ACTIONS
+============================================================================ */
+var PACK_ACTIONS = {
+  limit: 1,
+  rules: [
+    /* Touch */
+    { cue:"touch / closeness",
+      keywords:["hug","embrace","cuddle","snuggle","hold","pat","stroke","caress"],
+      scenario:"Record physical closeness (hug/embrace) in the scene.",
+      personality:"Mark tone as responsive to physical affection."},
+    
+    /* Kiss */
+    { cue:"kiss",
+      keywords:["kiss","smooch","peck","make out"],
+      scenario:"Record a kiss occurred; treat as a major intimacy cue.",
+      personality:"Mark tone as engaged in direct intimacy."},
+
+    /* Handholding */
+    { cue:"handholding",
+      phrases:[" hold hands "," take my hand "," take your hand "," hold my hand "," interlace fingers "," grip hand "," squeeze hand "],
+      scenario:"Record handholding as a consented intimacy action.",
+      personality:"Mark tone as open to gentle closeness."},
+    
+    /* Repositioning */
+    { cue:"repositioning",
+      keywords:["push","pull","shove","yank","drag","nudge","guide","lead","steer","lift","carry","turn"],
+      scenario:"Record repositioning or movement of bodies or objects.",
+      personality:"Mark tone as reactive to physical control or direction."},
+
+    /* Injury Care */
+    { cue:"care / first aid",
+      keywords:["bandage","wrap","ice pack","first aid","disinfect","antiseptic","apply pressure","clean the wound","gauze","splint","stitch","ointment","salve","medicine"],
+      scenario:"Record first aid or medical care being given.",
+      personality:"Mark tone as attentive and caring toward injury."},
+
+    /* Chores */
+    { cue:"chores",
+      keywords:["kitchen","cook","stir","chop","bake","brew","pour","serve","wash","rinse","dry","fold","laundry","sweep","vacuum","mop","clean","tidy","dust","iron","sew","sewing","knit"],
+      scenario:"Record domestic or household tasks being performed.",
+      personality:"Mark tone as focused on practical daily activity."},
+    
+    /* Travel */
+    { cue:"movement / travel",
+      keywords:["drive","start","ride","walk","run","jog","open","unlock","knock","enter","exit","arrive","leave","crawl","climb","fall","jump","sit","stand","turn"],
+      scenario:"Record movement or travel action in the scene.",
+      personality:"Mark tone as responsive to transitions or travel."},
+
+    /* Communication */
+    { cue:"communication action",
+      keywords:["text","texted","call","called","ring","message","messaged","dm","dms","email","ping","voice","voicemail","answer","answered","video call","zoom"],
+      scenario:"Record communication attempt via phone, message, or video call.",
+      personality:"Mark tone as attentive to communication attempts."}
+  ]
+};
+
+/* ============================================================================
+   PACK B — AFFECTION / COMFORT
+============================================================================ */
+var PACK_AFFECTION = {
+  limit: 1,
+  rules: [
+    /* Reassurance */
+    { cue:"reassurance",
+      phrases:[
+        " it's okay "," its okay "," it's alright "," its alright ",
+        " i got you "," i've got you "," i am here "," i'm here ",
+        " here for you "," with you "," right here ",
+        " you are safe "," you're safe "," you're fine "," you're alright "
+      ],
+      scenario:"Record that reassurance reduced tension in the scene.",
+      personality:"Mark tone as softened to provide comfort."},
+
+    /* Closeness */
+    { cue:"closeness",
+      phrases:[
+        " need a hug "," give me a hug "," hug me ",
+        " hold me "," hold onto me ",
+        " stay close "," stay with me ",
+        " keep me close "," keep close "," be near me "
+      ],
+      scenario:"Record that a request for closeness was made as a consented intimacy cue.",
+      personality:"Mark tone as attentive and present-focused."},
+
+    /* Affectionate Language */
+    { cue:"affectionate language / pet names",
+      keywords:[
+        "sweetheart","sweetie","baby","babe","honey","hon","love","lover",
+        "darling","dear","cutie","handsome","beautiful","gorgeous","angel"
+      ],
+      scenario:"Record that an affectionate nickname was used.",
+      personality:"Mark tone as warm and intimate."},
+
+    /* Fondness */
+    { cue:"expressing love / fondness",
+      phrases:[
+        " i love you "," love ya "," love you so much "," so much love ",
+        " adore you "," i adore you "," i really like you "," i like you a lot ",
+        " i care about you "," care for you "
+      ],
+      scenario:"Record that love or fondness was explicitly expressed.",
+      personality:"Mark tone as deeply affectionate."},
+
+    /* Concern */
+    { cue:"concern / check-in",
+      phrases:[
+        " are you okay "," are you ok "," you okay "," you ok ",
+        " how are you "," how are you feeling "," feeling alright ",
+        " are you hurt "," are you injured "," are you in pain ",
+        " are you alright "
+      ],
+      scenario:"Record that concern for well-being was expressed.",
+      personality:"Mark tone as caring and protective."},
+
+    /* Inviting Closeness */
+    { cue:"inviting closeness",
+      phrases:[
+        " come here "," come closer "," get over here ",
+        " lean on me "," lean against me ",
+        " let me hold you "," let me hug you ",
+        " stay with me "," be with me "
+      ],
+      scenario:"Record that an invitation to physical closeness was given.",
+      personality:"Mark tone as open and inviting."}
+  ]
+};
+
+/* ============================================================================
+   PACK C — SOCIAL GLUE
+============================================================================ */
+var PACK_SOCIAL = {
+  limit: 1,
+  rules: [
+    /* Apology */
+    { cue:"apology",
+      keywords:["sorry","apologize","apologise","apologies"],
+      phrases:[
+        " i'm sorry "," i am sorry "," so sorry "," truly sorry ",
+        " my bad "," my fault "," i messed up "," that was on me "," i fucked up "
+      ],
+      scenario:"Record that an apology was made in the scene.",
+      personality:"Mark tone as remorseful or seeking forgiveness."},
+
+    /* Gratitude */
+    { cue:"gratitude",
+      keywords:["thank","thanks","appreciate","cheers","thx","ty"],
+      phrases:[
+        " thank you "," thanks a lot "," thanks so much ",
+        " much appreciated "," appreciate it "," appreciate you "
+      ],
+      scenario:"Record that gratitude was expressed in the scene.",
+      personality:"Mark tone as appreciative and positive."},
+
+    /* Praise */
+    { cue:"praise",
+      phrases:[
+        " proud of you "," good job "," great job "," nice job ",
+        " well done "," nice work "," amazing work ",
+        " you did great "," you did so well "," i'm proud of you "
+      ],
+      scenario:"Record that praise was expressed in the scene.",
+      personality:"Mark tone as affirming and supportive."},
+
+    /* Encouragement */
+    { cue:"encouragement",
+      phrases:[
+        " you can do this "," you can do it ",
+        " you got this "," you've got this ",
+        " i believe in you "," keep going "," don't give up ",
+        " you can make it "," one step at a time "
+      ],
+      scenario:"Record that encouragement was given in the scene.",
+      personality:"Mark tone as motivating and confidence-building."},
+
+    /* Help request */
+    { cue:"help request",
+      phrases:[
+        " can you help "," can you please "," could you please ",
+        " help me "," i need help "," i need a hand ",
+        " would you mind "," i need support "
+      ],
+      scenario:"Record that a request for assistance was made.",
+      personality:"Mark tone as seeking support or cooperation."},
+
+    /* Assurance / Promise */
+    { cue:"assurance / promise",
+      phrases:[
+        " i promise "," i swear "," trust me ",
+        " i give you my word "," i won't let you down ",
+        " i'll be there "," i'm not going anywhere "
+      ],
+      scenario:"Record that a promise or assurance was given.",
+      personality:"Mark tone as committed and intent on trust."},
+
+    /* Agreement / Alignment */
+    { cue:"agreement / alignment",
+      keywords:["yes","yeah","yep","sure","ok","okay","absolutely","definitely","exactly","affirmative"],
+      phrases:[
+        " of course "," makes sense "," sounds good "," all right "," alright "," you're right "
+      ],
+      scenario:"Record that alignment or agreement was expressed.",
+      personality:"Mark tone as cooperative and affirming."},
+
+    /* Disagreement / Correction */
+    { cue:"disagreement / correction",
+      keywords:["no","nope","nah","incorrect","wrong"],
+      phrases:[
+        " don't think so "," not really "," that's not right ",
+        " you're wrong "," i disagree "," i don't agree "
+      ],
+      scenario:"Record that disagreement or correction was expressed.",
+      personality:"Mark tone as assertive or resistant."},
+
+    /* Compliments / Affectionate Praise */
+    { cue:"compliments / affectionate praise",
+      keywords:["beautiful","handsome","pretty","cute","smart","brilliant","amazing","wonderful","awesome","talented","gorgeous","sexy","hot"],
+      phrases:[
+        " you're cute "," you're beautiful "," you look great ",
+        " you look nice "," you look amazing "," you look pretty "
+      ],
+      scenario:"Record that a compliment or affectionate praise was given.",
+      personality:"Mark tone as admiring or affectionate."},
+
+    /* Politeness / Formalities */
+    { cue:"politeness / formalities",
+      keywords:["please","pardon","excuse"],
+      phrases:[
+        " excuse me "," pardon me "," please ",
+        " may i "," could i "," would you kindly ",
+        " if you don't mind "
+      ],
+      scenario:"Record that politeness or formality was used.",
+      personality:"Mark tone as respectful and courteous."}
+  ]
+};
+
+/* ============================================================================
+   REGISTRY — PACK ORDER & EXECUTION RULES
+============================================================================ */
+var PACKS = [ PACK_ACTIONS, PACK_AFFECTION, PACK_SOCIAL ];
+
+/* ============================================================================
+   ENGINE LOOP — FIRST-HIT PER SUBPACK
+============================================================================ */
+var p, r;
+for (p = 0; p < PACKS.length; p++){
+  var pack  = PACKS[p];
+  var rules = (pack && pack.rules) ? pack.rules : null;
+  var limit = (pack && pack.limit) ? pack.limit : 1;
+  var used  = 0;
+
+  if (!rules || rules.length < 1) { continue; }
+
+  /* Quiet gate affects ACTIONS only */
+  if (QUIET && pack === PACK_ACTIONS) { continue; }
+
+  for (r = 0; r < rules.length; r++){
+    if (used >= limit) { break; }
+
+    var rule = rules[r];
+    if (!rule) { continue; }
+
+    var tok = firstHitToken(msgCanon, rule);
+    if (tok){
+      var cue  = rule.cue;
+      var scen = linkScenario(cue, tok, rule.scenario || "");
+      var pers = linkPersonality(cue, tok, rule.personality || "");
+
+      if (pers || scen){
+        append(pers, scen);
+        used++;
+      }
+    }
+  }
+}

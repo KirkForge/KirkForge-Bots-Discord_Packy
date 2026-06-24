@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pricing — Gargoyle Packy</title>
+<meta name="description" content="One-time license, no subscription. Community (free eval), Indie, Pro, and Enterprise tiers." />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<header class="hero compact">
+  <div class="container">
+    <div class="brand">
+      <span class="logo">🗿</span>
+      <a href="index.html" class="brand-name">Gargoyle Packy</a>
+    </div>
+    <nav>
+      <a href="index.html#features">Features</a>
+      <a href="index.html#how">How it works</a>
+      <a href="pricing.html" class="active">Pricing</a>
+      <a href="https://github.com/KirkForge/KirkForge-Bots" class="nav-github">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<section class="pricing">
+  <div class="container">
+    <h1>One price. Yours forever.</h1>
+    <p class="lede">No subscriptions. No per-server fees. Buy once, run as long as Discord lets you.</p>
+
+    <div class="tiers">
+      <div class="tier">
+        <h3>Community</h3>
+        <div class="price"><span class="amount">$0</span></div>
+        <p class="tagline">Evaluation, single server, direct mode.</p>
+        <ul>
+          <li>Packy character cognition</li>
+          <li>One Discord server</li>
+          <li>Direct mode (bot calls LLM)</li>
+          <li>Community support (GitHub)</li>
+          <li>No update channel</li>
+        </ul>
+        <a href="https://github.com/KirkForge/KirkForge-Bots" class="btn btn-ghost">Download from GitHub</a>
+      </div>
+
+      <div class="tier featured">
+        <span class="badge">Most popular</span>
+        <h3>Indie</h3>
+        <div class="price"><span class="amount">$199</span></div>
+        <p class="tagline">For solo operators and small servers.</p>
+        <ul>
+          <li>Everything in Community</li>
+          <li>Microservice mode (full cognition pipeline)</li>
+          <li>Controlled chaos layer</li>
+          <li>1 year of update channel + support</li>
+          <li>Single-server license</li>
+        </ul>
+        <form action="https://sales.kirkforge.com/packy/checkout/indie" method="POST">
+          <button type="submit" class="btn btn-primary">Buy Indie</button>
+        </form>
+      </div>
+
+      <div class="tier">
+        <h3>Pro</h3>
+        <div class="price"><span class="amount">$999</span></div>
+        <p class="tagline">For multi-guild operators and mod teams.</p>
+        <ul>
+          <li>Everything in Indie</li>
+          <li>Multi-guild (up to 25 servers)</li>
+          <li>Custom persona (yours to write)</li>
+          <li>Advanced lore (your own lorebook)</li>
+          <li>1 year of priority support</li>
+        </ul>
+        <form action="https://sales.kirkforge.com/packy/checkout/pro" method="POST">
+          <button type="submit" class="btn btn-primary">Buy Pro</button>
+        </form>
+      </div>
+
+      <div class="tier">
+        <h3>Enterprise</h3>
+        <div class="price"><span class="amount">$9,999</span></div>
+        <p class="tagline">For orgs that need SLA + source escrow.</p>
+        <ul>
+          <li>Everything in Pro</li>
+          <li>Unlimited Discord servers</li>
+          <li>SLA + 24h support response</li>
+          <li>Source code escrow clause</li>
+          <li>Custom contract terms</li>
+        </ul>
+        <form action="https://sales.kirkforge.com/packy/checkout/enterprise" method="POST">
+          <button type="submit" class="btn btn-primary">Buy Enterprise</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="faq">
+      <h2>Frequently asked</h2>
+      <details>
+        <summary>What does "one-time license" actually mean?</summary>
+        <p>You pay once. The license file is signed and you keep using it for the lifetime of the product version you bought. Updates within the same major version are included.</p>
+      </details>
+      <details>
+        <summary>What happens when the support period ends?</summary>
+        <p>The bot keeps running. You lose access to the signed update channel and to priority support tickets. Renew at any time to re-enable both.</p>
+      </details>
+      <details>
+        <summary>Can I move the license to a new machine?</summary>
+        <p>Yes. The license is bound to your organization, not to hardware or a specific Discord server. Drop <code>license.json</code> on the new box, restart, done.</p>
+      </details>
+      <details>
+        <summary>Does Packy work with my LLM provider?</summary>
+        <p>Out of the box: Claude (Anthropic) and MiniMax. Bring your own key. The cognition layer is provider-agnostic; adding OpenAI / Ollama is a thin adapter.</p>
+      </details>
+      <details>
+        <summary>What about VAT / sales tax?</summary>
+        <p>EU and UK buyers see prices including VAT at checkout (Stripe Tax handles this). Outside the EU, the price you see is the price you pay.</p>
+      </details>
+      <details>
+        <summary>Refunds?</summary>
+        <p>30 days, no questions asked. Email <a href="mailto:support@kirkforge.com">support@kirkforge.com</a>.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <span class="brand-name">Gargoyle Packy</span>
+        <p>Built by <a href="https://kirkforge.com">KirkForge</a> · Denmark</p>
+      </div>
+      <div>
+        <h4>Product</h4>
+        <a href="index.html#features">Features</a>
+        <a href="https://github.com/KirkForge/KirkForge-Bots">Source</a>
+        <a href="https://github.com/KirkForge/KirkForge-Bots/blob/main/gargoyle-packy/CHANGELOG.md">Changelog</a>
+      </div>
+      <div>
+        <h4>Support</h4>
+        <a href="mailto:support@kirkforge.com">support@kirkforge.com</a>
+      </div>
+      <div>
+        <h4>Legal</h4>
+        <a href="https://github.com/KirkForge/KirkForge-Bots/blob/main/gargoyle-packy/LICENSE">License (BSL 1.1)</a>
+        <a href="https://github.com/KirkForge/KirkForge-Bots/blob/main/gargoyle-packy/LICENSE-EULA">EULA</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

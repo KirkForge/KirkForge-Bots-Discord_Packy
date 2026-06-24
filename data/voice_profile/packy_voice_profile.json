@@ -1,0 +1,10 @@
+{
+  "default": {"rate": 160, "pitch": 50, "volume": 1.0},
+  "moods": {
+    "neutral": {"rate": 160, "pitch": 50, "volume": 1.0},
+    "grumpy": {"rate": 140, "pitch": 42, "volume": 0.95},
+    "angry": {"rate": 130, "pitch": 35, "volume": 1.05},
+    "sleepy": {"rate": 100, "pitch": 45, "volume": 0.75},
+    "excited": {"rate": 200, "pitch": 60, "volume": 1.2}
+  }
+}

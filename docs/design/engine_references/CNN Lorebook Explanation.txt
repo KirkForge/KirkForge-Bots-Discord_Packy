@@ -1,0 +1,24 @@
+Why Use DistilBERT and Tiny CNNs for Lorebook Injection Instead of Traditional Keyword Search
+
+Traditional keyword search in a lorebook is like flipping through an index in a book you look for exact matches of words, which can miss important context, synonyms, or phrasing differences. It’s fast and simple, but it can easily overlook the most relevant information or bring up unrelated results just because a word matches.
+
+Using DistilBERT and a tiny CNN, however, is like having a smart assistant who actually understands what you mean—not just the words you use. Instead of just matching keywords, this system can grasp the meaning behind your message, recognize what you’re really asking about, and pick the most relevant lore—even if you use different words or phrasing.
+Key Advantages
+
+    Better Understanding
+    The AI doesn’t just look for exact words. It finds relevant information based on meaning, so it’s much better at understanding what the user really wants—even if they don’t use the “right” words.
+
+    More Relevant Results
+    It can pick the most contextually appropriate lore, not just anything with a matching keyword, leading to more accurate and in-character responses.
+
+    Avoids Confusion
+    It won’t get tripped up by common words that mean different things in different contexts.
+
+    Faster for Complex Queries
+    Even if the lorebook is huge or the question is complicated, the lightweight models can quickly find what’s needed, where keyword search might slow down or get overwhelmed.
+
+    Keeps the Character Consistent
+    By always injecting the right lore, the chatbot stays true to the character or world, making the roleplay experience much more believable and fun.
+
+In short
+“Instead of a robot that looks for exact words, you get a smart helper who understands what you mean and always brings you the most fitting story or rule, even when you say things differently. This makes the chatbot feel much more real and keeps the roleplay on track.”

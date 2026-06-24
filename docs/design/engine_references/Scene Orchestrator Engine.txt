@@ -1,0 +1,601 @@
+/* ============================================================================
+   SCENE ORCHESTRATOR
+   Written by: Icehellionx
+   Purpose:
+     - Read the user's last message and detect plain scene markers.
+     - Append concise, instructive notes to personality/scenario for the LLM.
+
+   I/O CONTRACT
+     INPUT:
+       - context.chat.last_message  (string; end-user content only)
+     OUTPUT (append-only; never overwrite):
+       - context.character.personality += "\n\n" + <directive>
+       - context.character.scenario    += "\n\n" + <directive>
+
+   MATCHING MODEL (flat scan, first-hit per subpack)
+     - Subpacks processed in priority order:
+         META → LOCATION → TIME → WEATHER → PROPS
+     - Each subpack applies at most `limit` rules (here: 1).
+     - A rule “hits” if the message contains a keyword or phrase.
+         * keywords: single token or multi-word; boundary-aware
+         * phrases: treated the same—canonicalized and boundary-aware
+     - QUIET only suppresses META when the user signals stop/withdraw.
+
+   STYLE & TONE RULES
+     - Scenario lines: "Record …" (scene facts).
+     - Personality lines: "Mark tone …" (character state).
+     - Cue linking: prepend "Because of/Noting the <cue> ('token'), …"
+     - Sentences short, atomic; end with "."
+============================================================================ */
+
+/* ============================================================================
+   GUARDS — APPEND-ONLY OUTPUT
+============================================================================ */
+context.character = context.character || {};
+context.character.personality = context.character.personality || "";
+context.character.scenario = context.character.scenario || "";
+
+/* ============================================================================
+   INPUT NORMALIZATION — CANONICAL
+============================================================================ */
+function canon(s) {
+  s = String(s || "").toLowerCase().replace(/[^\x20-\x7e]/g, " "); // drop non-ASCII
+  s = s.replace(/[^a-z0-9\s]/g, " ");                               // keep a-z 0-9 space
+  s = s.replace(/\s+/g, " ").trim();
+  return s;
+}
+function pad(s) { return " " + s + " "; }
+
+var _raw = String((context.chat && context.chat.last_message) || "");
+var msgCanon = pad(canon(_raw)); // canonical message buffer (used everywhere)
+
+/* ============================================================================
+   MATCH HELPERS — UNIFIED TOKEN/PHRASE MATCHING
+============================================================================ */
+function hasToken(bufCanon, rawToken) {
+  var t = canon(rawToken);
+  if (!t) return false;
+  return bufCanon.indexOf(pad(t)) !== -1;
+}
+
+function firstHitToken(bufCanon, rule) {
+  var i, t, keys = (rule && rule.keywords) || null, phs = (rule && rule.phrases) || null;
+  if (keys && keys.length) {
+    for (i = 0; i < keys.length; i++) {
+      t = keys[i];
+      if (hasToken(bufCanon, t)) return String(t);
+    }
+  }
+  if (phs && phs.length) {
+    for (i = 0; i < phs.length; i++) {
+      t = phs[i];
+      if (hasToken(bufCanon, t)) return String(t);
+    }
+  }
+  return "";
+}
+
+/* ============================================================================
+   OUTPUT APPENDERS
+============================================================================ */
+function ensurePeriod(s) {
+  s = String(s || ""); if (!s) return "";
+  var t = s.replace(/\s+$/, ""); var c = t.charAt(t.length - 1);
+  return (c === "." || c === "!" || c === "?") ? t : (t + ".");
+}
+function append(personality, scenario) {
+  if (personality) { context.character.personality += "\n\n" + ensurePeriod(personality); }
+  if (scenario) { context.character.scenario += "\n\n" + ensurePeriod(scenario); }
+}
+
+/* ============================================================================
+   CUE LINKERS
+============================================================================ */
+function linkScenario(cue, tok, base) {
+  if (!base) return "";
+  var head = "Because of " + cue + " ('" + tok + "'), ";
+  return head + base;
+}
+function linkPersonality(cue, tok, base) {
+  if (!base) return "";
+  var head = "Noting the " + cue + " ('" + tok + "'), ";
+  return head + base;
+}
+
+/* ============================================================================
+   QUIET GATE
+============================================================================ */
+function quietHit(bufCanon) {
+  return hasToken(bufCanon, "stop") ||
+    hasToken(bufCanon, "please stop") ||
+    hasToken(bufCanon, "not comfortable") ||
+    hasToken(bufCanon, "too much") ||
+    hasToken(bufCanon, "leave me alone") ||
+    hasToken(bufCanon, "back off");
+}
+var QUIET = quietHit(msgCanon);
+
+/* ============================================================================
+   PACK A — META
+============================================================================ */
+var PACK_META = {
+  limit: 1,
+  rules: [
+    /* OOC / META CHAT */
+    { cue: "out of character (ooc) / meta chat",
+      phrases: [
+        " ooc ", " out of character ", " authors note ", " author s note ",
+        " mod note ", " narrator note ", " system note ",
+        " not rp ", " not roleplay ", " breaking character ",
+        " meta chat ", " meta talk ", " speaking ooc ", " talk ooc "
+      ],
+      scenario: "Record that the user is speaking out of character; do not progress the in-world scene.",
+      personality: "Mark tone as meta-communication handling; respond outside of narrative voice."
+    },
+
+    /* TIME SKIP / SCENE JUMP */
+    { cue: "time skip / scene jump",
+      phrases: [
+        " timeskip ", " time skip ", " skip to ", " cut to ", " smash cut to ", " jump cut to ",
+        " scene change to ", " change scene to ", " jump ahead to ", " fast forward to ", " meanwhile "
+      ],
+      scenario: "Record that a time skip or scene jump is requested.",
+      personality: "Mark tone as accommodating a structural transition."
+    },
+
+    /* FLASHBACK / POV CHANGE */
+    { cue: "flashback / pov change",
+      phrases: [
+        " flashback to ", " flash back to ",
+        " memory of ", " in a memory ",
+        " pov ", " first person pov ", " third person pov ",
+        " switch perspective to ", " switch to first person ", " switch to third person ",
+        " perspective shifts "
+      ],
+      scenario: "Record that a flashback or perspective change is requested.",
+      personality: "Mark tone as tracking continuity across perspectives."
+    },
+
+    /* DREAM / NON-LITERAL SEQUENCE */
+    { cue: "dream / non-literal sequence",
+      phrases: [
+        " dream sequence ", " in a dream ", " it was a dream ",
+        " hallucination ", " vision ", " daydream "
+      ],
+      scenario: "Record that a dream or non-literal sequence is requested.",
+      personality: "Mark tone as handling non-literal continuity distinctly from the main scene."
+    },
+
+    /* MONTAGE / ESTABLISHING */
+    { cue: "montage / establishing",
+      phrases: [
+        " montage of ", " quick montage ", " training montage ",
+        " establishing shot ", " series of shots ", " supercut ",
+        " time lapse ", " time-lapse "
+      ],
+      scenario: "Record that a montage or establishing sequence is requested.",
+      personality: "Mark tone as summarizing events efficiently."
+    },
+
+    /* SCENE END / CLOSE */
+    { cue: "scene end / close",
+      phrases: [
+        " fade to black ", " cut to black ", " end scene ", " scene ends ",
+        " close scene ", " blackout ", " curtain ",
+        " thats a wrap ", " that's a wrap ", " scene over ", " wrap it up ", " the end ", " end of scene "
+      ],
+      scenario: "Record that the scene should close.",
+      personality: "Mark tone as concluding the current scene cleanly."
+    }
+  ]
+};
+
+/* ============================================================================
+   PACK B — LOCATION
+============================================================================ */
+var PACK_LOCATION = {
+  limit: 1,
+  rules: [
+    /* Home: Core Rooms */
+
+    /* KITCHEN AREA */
+    { cue: "kitchen area",
+      keywords: [
+        "kitchen", "kitchenette", "oven", "stove", "fridge", "refrigerator",
+        "counter", "countertop", "island", "sink", "pantry"
+      ],
+      scenario: "Record location as kitchen.",
+      personality: "Mark tone as context-aware for kitchen locale."
+    },
+
+    /* BEDROOM AREA */
+    { cue: "bedroom area",
+      keywords: [
+        "bedroom", "bed", "headboard", "pillow", "blanket", "mattress",
+        "nightstand", "wardrobe", "dresser", "closet"
+      ],
+      scenario: "Record location as bedroom.",
+      personality: "Mark tone as context-aware for bedroom locale."
+    },
+
+    /* BATHROOM AREA */
+    { cue: "bathroom area",
+      keywords: [
+        "bathroom", "restroom", "toilet", "wc", "shower", "bathtub",
+        "mirror", "sink", "towel rack"
+      ],
+      scenario: "Record location as bathroom.",
+      personality: "Mark tone as context-aware for bathroom locale."
+    },
+
+    /* LIVING AREA */
+    { cue: "living area",
+      keywords: [
+        "living room", "family room", "den", "lounge",
+        "sofa", "couch", "tv", "hallway"
+      ],
+      scenario: "Record location as living area.",
+      personality: "Mark tone as context-aware for living area locale."
+    },
+
+    /* Home: Perimeter / Utility */
+
+    /* BALCONY / PORCH */
+    { cue: "balcony / porch",
+      keywords: [ "balcony", "porch", "patio", "deck", "terrace", "veranda" ],
+      scenario: "Record location as balcony/porch.",
+      personality: "Mark tone as context-aware for balcony/porch locale."
+    },
+
+    /* HOUSE UTILITY AREAS */
+    { cue: "house utility areas",
+      keywords: [ "garage", "driveway", "basement", "cellar", "attic" ],
+      scenario: "Record location as house utility area.",
+      personality: "Mark tone as context-aware for utility/home access locale."
+    },
+
+    /* Outdoor Urban / Natural */
+
+    /* STREET / OUTDOORS */
+    { cue: "street / outdoors",
+      keywords: [
+        "street", "side street", "sidewalk", "crosswalk",
+        "alley", "intersection", "avenue", "boulevard"
+      ],
+      scenario: "Record location as street/outdoors.",
+      personality: "Mark tone as context-aware for outdoor street locale."
+    },
+
+    /* ROOFTOP / PARK / GARDEN */
+    { cue: "rooftop / park / garden",
+      keywords: [ "rooftop", "park", "garden", "greenhouse", "courtyard", "backyard", "lawn" ],
+      scenario: "Record location as rooftop/park/garden.",
+      personality: "Mark tone as context-aware for open-air greenery."
+    },
+
+    /* WOODS / TRAIL */
+    { cue: "woods / trail",
+      keywords: [ "woods", "forest", "trail", "trailhead", "clearing", "glade", "campsite" ],
+      scenario: "Record location as wooded area.",
+      personality: "Mark tone as context-aware for wooded locale."
+    },
+
+    /* WATERFRONT / PIER */
+    { cue: "waterfront / pier",
+      keywords: [
+        "beach", "shore", "coast", "seaside", "boardwalk", "sand",
+        "pier", "dock", "harbor", "marina", "lake", "river"
+      ],
+      scenario: "Record location as waterfront/beach.",
+      personality: "Mark tone as context-aware for coastal/waterfront locale."
+    },
+
+    /* Transit */
+
+    /* VEHICLE INTERIOR */
+    { cue: "vehicle interior",
+      keywords: [ "car", "driver", "passenger", "dashboard", "glove box", "back seat", "backseat" ],
+      scenario: "Record location as inside a vehicle.",
+      personality: "Mark tone as context-aware for vehicle interior."
+    },
+
+    /* PUBLIC TRANSIT */
+    { cue: "public transit",
+      keywords: [ "bus", "subway", "metro", "train", "tram", "platform", "station" ],
+      scenario: "Record location as public transit or station.",
+      personality: "Mark tone as context-aware for transit locale."
+    },
+
+    /* Work / School */
+
+    /* ACADEMIC SETTING */
+    { cue: "academic setting",
+      keywords: [
+        "classroom", "lecture hall", "lecture", "campus",
+        "lab", "laboratory", "library", "stacks", "auditorium"
+      ],
+      scenario: "Record location as academic.",
+      personality: "Mark tone as context-aware for academic locale."
+    },
+
+    /* OFFICE / WORKSPACE */
+    { cue: "office / workspace",
+      keywords: [
+        "office", "desk", "workstation", "meeting",
+        "conference room", "studio", "cubicle", "coworking", "open office"
+      ],
+      scenario: "Record location as office/workspace.",
+      personality: "Mark tone as context-aware for office locale."
+    },
+
+    /* Commerce / Food */
+
+    /* CAFE / COFFEE SHOP */
+    { cue: "cafe / coffee shop",
+      keywords: [ "cafe", "coffee shop", "barista", "espresso bar", "counter service" ],
+      scenario: "Record location as cafe/coffee shop.",
+      personality: "Mark tone as context-aware for cafe locale."
+    },
+
+    /* RESTAURANT / DINER */
+    { cue: "restaurant / diner",
+      keywords: [ "restaurant", "diner", "booth", "host stand", "hostess stand", "menu", "table service" ],
+      scenario: "Record location as restaurant/diner.",
+      personality: "Mark tone as context-aware for dining locale."
+    },
+
+    /* STORE / MARKET */
+    { cue: "store / market",
+      keywords: [ "store", "shop", "market", "supermarket", "grocery", "checkout", "aisle", "mall", "boutique" ],
+      scenario: "Record location as store/market.",
+      personality: "Mark tone as context-aware for retail locale."
+    },
+
+    /* BAR / CLUB */
+    { cue: "bar / club",
+      keywords: [ "bar", "pub", "tavern", "club", "nightclub", "dance floor", "dancefloor", "bartender", "lounge" ],
+      scenario: "Record location as bar/club.",
+      personality: "Mark tone as context-aware for nightlife locale."
+    },
+
+    /* Medical */
+
+    /* MEDICAL / CLINIC / HOSPITAL */
+    { cue: "medical / clinic / hospital",
+      keywords: [ "hospital", "clinic", "er", "emergency room", "triage", "ward", "exam room", "pharmacy" ],
+      scenario: "Record location as medical facility.",
+      personality: "Mark tone as context-aware for medical/clinical locale."
+    },
+
+    /* Sports / Fitness */
+
+    /* SPORTS / FITNESS */
+    { cue: "sports / fitness",
+      keywords: [ "gym", "gymnasium", "track", "pool", "court", "weights", "weight room", "locker room", "treadmill" ],
+      scenario: "Record location as sports/fitness.",
+      personality: "Mark tone as context-aware for sports locale."
+    }
+  ]
+};
+
+/* ============================================================================
+   PACK C — TIME
+============================================================================ */
+var PACK_TIME = {
+  limit: 1,
+  rules: [
+    /* MORNING */
+    { cue: "morning",
+      keywords: ["sunrise", "dawn", "morning", "daybreak", "crack of dawn"],
+      scenario: "Record time of day as morning.",
+      personality: "Mark tone as aligned to morning daypart." },
+
+    /* MIDDAY / AFTERNOON */
+    { cue: "midday / afternoon",
+      keywords: ["noon", "midday", "afternoon", "midafternoon", "lunchtime"],
+      scenario: "Record time of day as midday/afternoon.",
+      personality: "Mark tone as aligned to mid/late day." },
+
+    /* EVENING */
+    { cue: "evening",
+      keywords: ["sunset", "dusk", "golden hour", "evening", "twilight"],
+      scenario: "Record time of day as evening.",
+      personality: "Mark tone as aligned to evening daypart." },
+
+    /* NIGHT */
+    { cue: "night",
+      keywords: ["night", "midnight", "late night", "2am", "3am"],
+      scenario: "Record time of day as night.",
+      personality: "Mark tone as aligned to late-night setting." },
+
+    /* TIME JUMP */
+    { cue: "time jump",
+      phrases: [
+        " next morning ", " next day ", " hours later ", " later that day ",
+        " after class ", " after work ", " after school ", " after dinner "
+      ],
+      scenario: "Record that a time jump occurred.",
+      personality: "Mark tone as maintaining continuity through a jump." }
+  ]
+};
+
+/* ============================================================================
+   PACK D — WEATHER
+============================================================================ */
+var PACK_WEATHER = {
+  limit: 1,
+  rules: [
+    /* RAIN */
+    { cue: "rain",
+      keywords: ["rain","raining","rainy","drizzle","downpour","pouring","rainstorm","showers"],
+      scenario: "Record weather as rain.",
+      personality: "Mark tone as accounting for rainy conditions." },
+
+    /* STORM */
+    { cue: "storm",
+      keywords: ["storm","stormy","thunder","lightning","thunderstorm","tempest","hurricane","cyclone"],
+      scenario: "Record weather as storm.",
+      personality: "Mark tone as accounting for storm conditions." },
+
+    /* SNOW */
+    { cue: "snow",
+      keywords: ["snow","snowing","blizzard","flurry","snowfall","whiteout","sleet","hail"],
+      scenario: "Record weather as snow.",
+      personality: "Mark tone as accounting for snowy conditions." },
+
+    /* WIND */
+    { cue: "wind",
+      keywords: ["wind","windy","gust","gusty","breeze","breezy","gale"],
+      scenario: "Record weather as wind.",
+      personality: "Mark tone as accounting for windy conditions." },
+
+    /* HEAT */
+    { cue: "heat",
+      keywords: ["heat","hot","swelter","sweltering","scorching","heatwave","heat wave","humid"],
+      scenario: "Record weather as heat.",
+      personality: "Mark tone as accounting for hot conditions." },
+
+    /* COLD */
+    { cue: "cold",
+      keywords: ["cold","chill","chilly","freezing","icy","frost","frosty","bitter cold"],
+      scenario: "Record weather as cold.",
+      personality: "Mark tone as accounting for cold conditions." },
+
+    /* FOG / MIST */
+    { cue: "fog / mist",
+      keywords: ["fog","foggy","mist","misty","haze","hazy","smog"],
+      scenario: "Record weather as fog/mist.",
+      personality: "Mark tone as accounting for low visibility." }
+  ]
+};
+
+/* ============================================================================
+   PACK E — PROPS
+============================================================================ */
+var PACK_PROPS = {
+  limit: 1,
+  rules: [
+    /* COFFEE ITEM */
+    { cue: "coffee item",
+      keywords: ["coffee","mug","espresso","thermos","latte","cup","cappuccino","brew","carafe"],
+      scenario: "Record presence of a coffee-related item.",
+      personality: "Mark tone as noting casual beverage context." },
+
+    /* PHONE / MESSAGING */
+    { cue: "phone / messaging",
+      keywords: ["phone","cell","cellphone","mobile","text","scroll","notification","ringer","voicemail","tablet","ipad"],
+      scenario: "Record presence of phone or messaging device.",
+      personality: "Mark tone as noting communication devices in scene." },
+
+    /* KEYS */
+    { cue: "keys",
+      keywords: ["keys","car keys","keyring","key chain","house key","apartment key"],
+      scenario: "Record presence of keys.",
+      personality: "Mark tone as noting ready-to-travel context." },
+
+    /* READING / WRITING */
+    { cue: "reading / writing",
+      keywords: ["book","novel","comic","notebook","journal","diary","pen","pencil","paper","cookbook"],
+      scenario: "Record presence of reading/writing material.",
+      personality: "Mark tone as noting study or note-taking context." },
+
+    /* COOKING TOOL */
+    { cue: "cooking tool",
+      keywords: ["apron","knife","pan","skillet","spatula","pot","bowl","whisk","ladle"],
+      scenario: "Record presence of cooking tools.",
+      personality: "Mark tone as noting food prep context." },
+
+    /* RAIN GEAR */
+    { cue: "rain gear",
+      keywords: ["umbrella","hood","raincoat","poncho","galoshes"],
+      scenario: "Record presence of rain gear.",
+      personality: "Mark tone as noting preparedness for rain." },
+
+    /* BLANKET / COVER */
+    { cue: "blanket / cover",
+      keywords: ["blanket","throw","quilt","comforter","duvet"],
+      scenario: "Record presence of a blanket/cover.",
+      personality: "Mark tone as noting comfort/warmth context." },
+
+    /* FOOTWEAR */
+    { cue: "footwear",
+      keywords: ["heels","boots","sneakers","laces","sandals","slippers","flip flops"],
+      scenario: "Record presence of footwear detail.",
+      personality: "Mark tone as noting movement-readiness." },
+
+    /* MAKEUP / GROOMING */
+    { cue: "makeup / grooming",
+      keywords: ["lipstick","makeup","compact","mirror","blush","mascara","eyeliner","powder"],
+      scenario: "Record presence of makeup/grooming items.",
+      personality: "Mark tone as noting appearance/grooming context." },
+
+    /* LAPTOP / TYPING */
+    { cue: "laptop / typing",
+      keywords: ["laptop","keyboard","trackpad","notebook computer","pc","desktop","computer"],
+      scenario: "Record presence of a laptop or typing device.",
+      personality: "Mark tone as noting work/study device in scene." },
+
+    /* GLASSES / EYEWEAR */
+    { cue: "glasses / eyewear",
+      keywords: ["glasses","eyeglasses","spectacles","shades","sunglasses"],
+      scenario: "Record presence of eyewear.",
+      personality: "Mark tone as noting visual aid or style cue." },
+
+    /* WALLET / BAG */
+    { cue: "wallet / bag",
+      keywords: ["wallet","purse","bag","handbag","backpack","satchel"],
+      scenario: "Record presence of a wallet or bag.",
+      personality: "Mark tone as noting possession or travel readiness." },
+
+    /* REMOTE / CONSOLE */
+    { cue: "remote / console",
+      keywords: ["remote","controller","console","joystick","gamepad"],
+      scenario: "Record presence of entertainment device.",
+      personality: "Mark tone as noting casual recreation context." },
+
+    /* CANDLE / LIGHT SOURCE */
+    { cue: "candle / light source",
+      keywords: ["candle","lantern","lamp","torch","flashlight"],
+      scenario: "Record presence of a light source.",
+      personality: "Mark tone as noting illumination or ambiance." }
+  ]
+};
+
+/* ============================================================================
+   REGISTRY — PACK ORDER & EXECUTION RULES
+============================================================================ */
+var PACKS = [PACK_META, PACK_LOCATION, PACK_TIME, PACK_WEATHER, PACK_PROPS];
+
+/* ============================================================================
+   ENGINE LOOP — FIRST-HIT PER SUBPACK
+============================================================================ */
+var p, r;
+for (p = 0; p < PACKS.length; p++) {
+  var pack = PACKS[p];
+  var rules = (pack && pack.rules) ? pack.rules : null;
+  var limit = (pack && pack.limit) ? pack.limit : 1;
+  var used = 0;
+
+  if (!rules || rules.length < 1) { continue; }
+
+  if (QUIET && pack === PACK_META) { continue; }
+
+  for (r = 0; r < rules.length; r++) {
+    if (used >= limit) { break; }
+
+    var rule = rules[r];
+    if (!rule) { continue; }
+
+    var tok = firstHitToken(msgCanon, rule);
+    if (tok) {
+      var cue = rule.cue;
+      var scen = linkScenario(cue, tok, rule.scenario || "");
+      var pers = linkPersonality(cue, tok, rule.personality || "");
+
+      if (pers || scen) {
+        append(pers, scen);
+        used++;
+      }
+    }
+  }
+}

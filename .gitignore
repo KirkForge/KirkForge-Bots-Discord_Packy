@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Build
+dist/
+build/
+
+# Data (runtime-generated, not committed)
+data/pending_lore/
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+
+# LLM tooling (never committed)
+.claude/
+CLAUDE.md
+AGENTS.md
+state.md
+
+# Security
+*.pem
+*.key
+token.json
+token_*.json
+*token*.json
+*.pickle
+client_secret*.json
+credentials.json

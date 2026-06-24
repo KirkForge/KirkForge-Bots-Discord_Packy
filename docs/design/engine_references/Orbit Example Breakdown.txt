@@ -1,0 +1,24 @@
+### 1. The Vibe Check (The Trigger)
+First, the engine looks at the **`condition`** line.
+`pair.char.user.pow.testing_boundaries > 0.25 || pair.char.user.rel.rivalry_challenge > 0.25`
+
+[cite_start]Because `conditionOnly` is set to `true`, the engine completely ignores keywords (it doesn't care if you said "fight" or "argue")[cite: 156, 288]. [cite_start]Instead, it looks directly at the CNN's probability scores for the last 10 sentences[cite: 5]. [cite_start]It asks: *"Is there at least a 25% chance that we are testing boundaries or acting like rivals right now?"*[cite: 195].
+
+### 2. The Takeover (The Priority)
+If the math says "Yes, things are tense," the engine activates this entry. [cite_start]Because you set **`priority: 5`**, this entry elbows its way to the front of the line[cite: 304]. It basically tells the LLM: *"Ignore the standard 'we are friends' lore for a second; this specific power struggle is the most important thing happening right now."*
+
+### 3. The Fork in the Road (The Shifts)
+Now comes the smart part. The engine knows there is a struggle, but it doesn't know who is *winning* yet. It looks at the **`Shifts`** array to decide how to act. [cite_start]It evaluates them in order and picks the single best match[cite: 11, 306].
+
+* **Path A: The Alpha Move**
+    `condition: "pair.char.user.pow.dominance_assertive > pair.char.user.pow.submission_accommodating"`
+    The engine compares the bot's own "Dominance" score against its "Submission" score. If the bot is acting more dominant than submissive, it injects the instructions to **"speak with finality"** and **"refuse to back down."** It forces the bot to play the winner.
+
+* **Path B: The Beta Move**
+    `condition: "pair.char.user.pow.submission_accommodating > 0.35"`
+    If Path A failed (the bot isn't winning), it checks this next. Is the "Submission" score fairly high (over 35%)? If yes, it injects the instructions to **"hesitate," "stutter,"** and **"placate."** It forces the bot to realize it is losing the argument.
+
+### The Result
+Instead of a generic response, the LLM receives a precise stage direction: *"We are fighting, and I am currently winning/losing, so I should act like it."* This keeps the bot from hallucinating that you are friends in the middle of an argument.
+
+Would you like me to draft a similar entry for a different scenario, perhaps "Romance/Flirting" or "Cold/Distant"?

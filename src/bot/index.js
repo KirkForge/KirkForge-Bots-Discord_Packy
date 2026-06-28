@@ -6,7 +6,7 @@ import { fileURLToPath } from 'url';
 // Import character system modules
 import { getCurrentPrompt, getCurrentState, getCurrentCharacter, processResponse } from './character/randomizer.js';
 import { getMixedSnark } from './character/snarkBank.js';
-import { loadLorebook, selectLore } from './character/loreSelector.js';
+import { loadLorebook, selectLore, loadConceptGraph } from './character/loreSelector.js';
 import { PackyState } from './character/state.js'; // kept for legacy compat
 import { getResponseStyleLimit } from './character/systemPrompt.js';
 import { computeSnark, computeMood } from './character/mood.js';
@@ -76,6 +76,8 @@ const channelChaos = new Map();
 
 // Lorebook storage (loaded on ready)
 let lorebook = { categories: {} };
+let conceptGraphData = null;
+let categoryConceptsData = null;
 
 /**
  * Call the Python microservice endpoint
@@ -170,7 +172,7 @@ async function callDirect(userText, _guildId, _userId) {
     state.weather = signals.weather;
 
     // Select lore entries using character-specific lorebook
-    const loreEntries = selectLore(lorebook, userText, mood, 2);
+    const loreEntries = selectLore(lorebook, userText, mood, 2, conceptGraphData, categoryConceptsData);
 
     // Get snark lines
     const snarkLines = getMixedSnark(2);
@@ -367,6 +369,8 @@ async function handleInteraction(interaction) {
   // Shared modules for all handlers
   const modules = {
     lorebook,
+    conceptGraphData,
+    categoryConceptsData,
     channelChaos,
     callDirect,
     callMicroservice,
@@ -480,6 +484,20 @@ client.on('ready', async () => {
   } catch (error) {
     logger.error('Failed to load lorebook', { error: error.message });
     lorebook = { categories: {} };
+  }
+
+  // Load concept graph and category concepts
+  try {
+    const conceptGraphPath = path.resolve(__dirname, 'data/lorebook/concept_graph.json');
+    const categoryConceptsPath = path.resolve(__dirname, 'data/lorebook/category_concepts.json');
+    const conceptData = await loadConceptGraph(conceptGraphPath, categoryConceptsPath);
+    conceptGraphData = conceptData.conceptGraph;
+    categoryConceptsData = conceptData.categoryConceptsMap;
+    logger.info('Concept graph loaded', { graphKeys: Object.keys(conceptGraphData).length, categoryConcepts: Object.keys(categoryConceptsData).length });
+  } catch (error) {
+    logger.error('Failed to load concept graph', { error: error.message });
+    conceptGraphData = {};
+    categoryConceptsData = {};
   }
 
   // Load chaos state persistence

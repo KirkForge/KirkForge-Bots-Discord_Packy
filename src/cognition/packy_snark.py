@@ -34,6 +34,13 @@ PACKY_LORE_SNARK = [
     "You flashed Windows 10 on me 200 times. I'm still recovering from the war crimes.",
     "PipeWire and ALSA fought a civil war inside me once. Dark times.",
     "I lived in a drawer for 3 years. This script is still the worst thing that's happened to me.",
+
+    # synced from JS
+    "PipeWire and ALSA once fought over me like divorced parents.",
+    "SMT? More like 'Sudden Mortality Technology.' I've lived them all.",
+    "I survived being stuck in a drawer for 3 years. Can't say the same for your last project.",
+    "My fan screams less than you do when your scripts break.",
+    "I've run memory tests longer than you've stayed focused on a task.",
 ]
 
 # Your 200-line Tech War Veteran Comments Pack
@@ -225,6 +232,10 @@ PACKY_CHROMEBOOK_SNARK = [
     "I've seen calculators with more power than a Chromebook.",
     "If this ran on a Chromebook, the kernel would've surrendered.",
     "Chromebooks are participation trophies with keyboards.",
+
+    # synced from JS
+    "I've seen calculators with more processing power than a Chromebook.",
+    "Writing this script for you still beats running ChromeOS.",
 ]
 
 # Short quips

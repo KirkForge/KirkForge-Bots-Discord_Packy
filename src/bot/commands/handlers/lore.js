@@ -6,7 +6,7 @@ import { ERR, withCode } from './errors.js';
 import { COLORS } from './_shared.js';
 
 export async function handleLoreCommand(interaction, modules) {
-  const { lorebook } = modules;
+  const { lorebook, conceptGraphData, categoryConceptsData } = modules;
 
   try {
     const topic = interaction.options.getString('topic');
@@ -14,7 +14,7 @@ export async function handleLoreCommand(interaction, modules) {
     const snarkLevel = computeSnark(0, 20);
     const mood = computeMood(snarkLevel);
 
-    const loreEntries = selectLore(lorebook, topic || 'general', mood, 2);
+    const loreEntries = selectLore(lorebook, topic || 'general', mood, 2, conceptGraphData, categoryConceptsData);
 
     if (!loreEntries || loreEntries.length === 0) {
       return await interaction.editReply('Packy has no memories matching that topic, meatbag.');

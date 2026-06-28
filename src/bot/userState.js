@@ -1,5 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
+import { logger } from './logger.js';
 
 const STATE_FILE = path.join(process.cwd(), 'data', 'user_state.json');
 
@@ -39,7 +40,7 @@ export async function loadState() {
     if (error.code === 'ENOENT') {
       stateCache = {};
     } else {
-      console.error('Failed to load state:', error);
+      logger.error('Failed to load state', { error: error.message });
       stateCache = {};
     }
   }
@@ -59,7 +60,7 @@ export async function saveState() {
     await fs.writeFile(tmpFile, data, 'utf-8');
     await fs.rename(tmpFile, STATE_FILE);
   } catch (error) {
-    console.error('Failed to save state:', error);
+    logger.error('Failed to save state', { error: error.message });
   }
 }
 
@@ -154,7 +155,7 @@ export function startAutoSave(intervalMs = 5 * 60 * 1000) {
   }
   _saveInterval = setInterval(() => {
     saveState().catch(error => {
-      console.error('Auto-save failed:', error);
+      logger.error('Auto-save failed', { error: error.message });
     });
   }, intervalMs);
 }

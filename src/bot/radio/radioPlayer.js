@@ -25,15 +25,19 @@ function getOrCreatePlayer(guildId) {
       },
     });
 
-    player.on("error", (error) => {
-      logger.error(
-        `Radio player error in guild ${guildId}: ${error.message}`
-      );
-    });
+    if (player.listenerCount('error') === 0) {
+      player.on("error", (error) => {
+        logger.error(
+          `Radio player error in guild ${guildId}: ${error.message}`
+        );
+      });
+    }
 
-    player.on(AudioPlayerStatus.Idle, () => {
-      logger.info(`Radio player idle in guild ${guildId}`);
-    });
+    if (player.listenerCount('idle') === 0) {
+      player.on(AudioPlayerStatus.Idle, () => {
+        logger.info(`Radio player idle in guild ${guildId}`);
+      });
+    }
 
     guildPlayers.set(guildId, {
       player,
@@ -208,7 +212,7 @@ function cleanup(guildId) {
   if (state.connection) {
     try {
       state.connection.destroy();
-    } catch (e) {
+    } catch {
       // ignore
     }
     state.connection = null;

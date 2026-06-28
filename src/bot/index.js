@@ -4,11 +4,11 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 // Import character system modules
-import { getCurrentPrompt, getCurrentState, getCurrentCharacter, selectCharacterByName, selectRandomCharacter, getSnark, processResponse, listCharacters } from './character/randomizer.js';
+import { getCurrentPrompt, getCurrentState, getCurrentCharacter, processResponse } from './character/randomizer.js';
 import { getMixedSnark } from './character/snarkBank.js';
 import { loadLorebook, selectLore } from './character/loreSelector.js';
 import { PackyState } from './character/state.js'; // kept for legacy compat
-import { buildSystemPrompt, getResponseStyleLimit } from './character/systemPrompt.js';
+import { getResponseStyleLimit } from './character/systemPrompt.js';
 import { computeSnark, computeMood } from './character/mood.js';
 import { extractKeywords } from './character/keywords.js';
 import {
@@ -19,8 +19,9 @@ import {
   recordInjection,
 } from './character/chaosState.js';
 import { readSignals } from './signals.js';
-import { logger, getCorrelationId } from './logger.js';
-import { loadChaosState, startAutoSave as startChaosAutoSave } from './chaosStatePersist.js';
+import { logger } from './logger.js';
+import { withCode, ERR } from './commands/handlers/errors.js';
+import { loadChaosState, startAutoSave as startChaosAutoSave, saveChaosState, stopAutoSave as stopChaosAutoSave } from './chaosStatePersist.js';
 import { filterFamilyFriendly } from './character/contentFilter.js';
 
 // Import API adapters
@@ -31,8 +32,8 @@ import { callWithRetry as callMiniMax } from './api/minimaxAdapter.js';
 import { isRateLimited } from './rateLimiter.js';
 
 // Import user state and guild config
-import { loadState, updateUserState, startAutoSave as startStateAutoSave } from './userState.js';
-import { loadGuildConfigs, getGuildConfig, isChannelAllowed, isGuildMuted, startAutoSave as startConfigAutoSave, setGuildConfig, saveGuildConfigs } from './guildConfig.js';
+import { loadState, updateUserState, startAutoSave as startStateAutoSave, saveState, stopAutoSave as stopStateAutoSave } from './userState.js';
+import { loadGuildConfigs, getGuildConfig, isChannelAllowed, isGuildMuted, startAutoSave as startConfigAutoSave, setGuildConfig, saveGuildConfigs, stopAutoSave as stopConfigAutoSave } from './guildConfig.js';
 
 // Import command handlers
 import {
@@ -51,7 +52,9 @@ import {
   handleRadioStations,
   handleRadioNowPlaying,
   handleRadioVolume,
+  handleRadioStationsButton,
 } from './commands/handlers.js';
+import { RADIO_STATIONS } from './radio/radioStations.js';
 import { shutdownAllRadio } from './radio/radioPlayer.js';
 
 // Load environment variables
@@ -65,7 +68,6 @@ const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const BOT_MODE = process.env.BOT_MODE || 'microservice'; // 'direct' or 'microservice'
 const PRIMARY_ADAPTER = process.env.PRIMARY_ADAPTER || 'claude'; // 'claude' or 'minimax'
 const COGNITION_PORT = process.env.COGNITION_PORT || 8765;
-const LOREBOOK_PATH = process.env.LOREBOOK_PATH || 'data/lorebook/packy_lorebook_structured.json';
 const MAX_INPUT_CHARS = parseInt(process.env.MAX_INPUT_CHARS || '1500', 10);
 const AUTH_SECRET = process.env.PACKY_API_SECRET || '';
 
@@ -105,29 +107,29 @@ async function callMicroservice(userText, guildId, userId, retries = 2) {
       clearTimeout(timer);
 
       if (!response.ok) {
-        console.error(`Microservice error: ${response.status}`);
+        logger.error(`Microservice error: ${response.status}`);
         if (attempt < retries) {
           await new Promise(r => setTimeout(r, 200 * Math.pow(2, attempt)));
           continue;
         }
-        return 'I\'m having trouble thinking right now. Try again in a moment.';
-      }
+      return withCode(ERR.MICROSERVICE, 'I\'m having trouble thinking right now. Try again in a moment.');
+    }
 
       const data = await response.json();
-      return data.result || 'Hmm, I got nothing.';
+      return data.result || withCode(ERR.MICROSERVICE, 'Hmm, I got nothing.');
     } catch (error) {
-      console.error(`Microservice attempt ${attempt + 1} failed:`, error.message);
+      logger.error(`Microservice attempt ${attempt + 1} failed:`, { error: error.message });
       if (attempt < retries) {
         await new Promise(r => setTimeout(r, 200 * Math.pow(2, attempt)));
         continue;
       }
       if (error.name === 'AbortError') {
-        return 'My brain timed out. Give me a moment to recover.';
+        return withCode(ERR.TIMEOUT, 'My brain timed out. Give me a moment to recover.');
       }
-      return 'My brain is offline. Check if the cognition service is running.';
+      return withCode(ERR.COGNITION_DOWN, 'My brain is offline. Check if the cognition service is running.');
     }
   }
-  return 'My brain is offline. Check if the cognition service is running.';
+  return withCode(ERR.COGNITION_DOWN, 'My brain is offline. Check if the cognition service is running.');
 }
 
 /**
@@ -147,7 +149,6 @@ async function callDirect(userText, _guildId, _userId) {
     );
 
     // Use active character state (from randomizer)
-    const characterName = getCurrentCharacter()?.name || 'Packy';
     let state = getCurrentState();
     
     // Fallback to PackyState if needed (shouldn't happen after randomizer init)
@@ -192,8 +193,8 @@ async function callDirect(userText, _guildId, _userId) {
 
     return { text: result.text || 'I got nothing.', state };
   } catch (error) {
-    console.error('Direct API call failed:', error.message);
-    return { text: 'API call crashed. How typical.', state: null };
+    logger.error('Direct API call failed', { error: error.message });
+    return { text: withCode(ERR.API_FAIL, 'API call crashed. How typical.'), state: null };
   }
 }
 
@@ -203,6 +204,7 @@ async function callDirect(userText, _guildId, _userId) {
  * @param {Message} message - Discord message object
  */
 async function handleMessage(message) {
+  trackInFlight(1);
   // Ignore bot messages and own messages
   if (message.author.bot || message.author.id === message.client.user.id) {
     return;
@@ -236,13 +238,13 @@ async function handleMessage(message) {
             await message.channel.send(snarkLine);
             recordInjection(message.channelId);
           } catch (e) {
-            console.error('Failed to send unprovoked commentary:', e.message);
+            logger.warn('Failed to send unprovoked commentary', { error: e.message });
           }
         }
       }
     } catch (e) {
       // Silently fail unprovoked commentary - don't interrupt normal flow
-      console.error('Unprovoked commentary error:', e.message);
+      logger.warn('Unprovoked commentary error', { error: e.message });
     }
   }
 
@@ -259,7 +261,7 @@ async function handleMessage(message) {
   if (message.guildId && !isChannelAllowed(message.guildId, message.channelId)) return;
 
   // Check rate limit
-  if (isRateLimited(message.author.id)) {
+  if (await isRateLimited(message.author.id)) {
     return message.reply({
       content: 'Slow down meatbag. Even I need a moment.',
       allowedMentions: { repliedUser: false },
@@ -269,9 +271,7 @@ async function handleMessage(message) {
   // Show typing indicator
   try {
     await message.channel.sendTyping();
-  } catch {
-    // silently fail typing indicator
-  }
+  } catch { /* non-fatal: typing indicator */ }
 
   // Extract user text (remove mention or prefix)
   let userText = message.content.trim();
@@ -293,7 +293,13 @@ async function handleMessage(message) {
   // Cap input length before LLM dispatch
   if (userText.length > MAX_INPUT_CHARS) {
     userText = userText.substring(0, MAX_INPUT_CHARS);
-    console.log(`[PACKY] Input truncated from ${message.content.length} to ${MAX_INPUT_CHARS} chars`);
+    logger.warn('Input truncated', { original: message.content.length, max: MAX_INPUT_CHARS });
+    try {
+      await message.reply({
+        content: `Your message was trimmed to ${MAX_INPUT_CHARS} characters before I processed it.`,
+        allowedMentions: { repliedUser: false },
+      });
+    } catch { /* non-fatal */ }
   }
 
   try {
@@ -341,11 +347,13 @@ async function handleMessage(message) {
 
     return;
   } catch (error) {
-    console.error('Error handling message:', error);
+    logger.error('Error handling message', { error: error instanceof Error ? error.message : error });
     return message.reply({
-      content: 'Something broke in my circuits. Very embarrassing.',
+      content: withCode(ERR.UNKNOWN, 'Something broke in my circuits. Very embarrassing.'),
       allowedMentions: { repliedUser: false },
     });
+  } finally {
+    trackInFlight(-1);
   }
 }
 
@@ -355,6 +363,7 @@ async function handleMessage(message) {
  * @param {Interaction} interaction - Discord interaction object
  */
 async function handleInteraction(interaction) {
+  trackInFlight(1);
   // Shared modules for all handlers
   const modules = {
     lorebook,
@@ -373,6 +382,13 @@ async function handleInteraction(interaction) {
     if (interaction.customId === 'war_another') {
       return await handleWarButton(interaction, modules);
     }
+    if (interaction.customId.startsWith('radio_stn_page:')) {
+      // Re-derive stations list for pagination context
+      // The customId stores: radio_stn_page:{page}
+      // We use the most recent category from the stored interaction context
+      const stations = RADIO_STATIONS;
+      return await handleRadioStationsButton(interaction, stations, null);
+    }
     return;
   }
 
@@ -383,36 +399,47 @@ async function handleInteraction(interaction) {
   try {
     await interaction.deferReply();
 
-    const command = interaction.commandName;
+    // Guard: 14-minute timeout to avoid dead thinking state
+    const handlerPromise = (async () => {
+      const command = interaction.commandName;
 
-    if (command === 'packy')  return await handlePackyCommand(interaction, modules);
-    if (command === 'mood')   return await handleMoodCommand(interaction, modules);
-    if (command === 'lore')   return await handleLoreCommand(interaction, modules);
-    if (command === 'war')    return await handleWarCommand(interaction, modules);
-    if (command === 'admin')  return await handleAdminCommand(interaction, modules);
-    if (command === 'snark')  return await handleSnarkCommand(interaction, modules);
-    if (command === 'status') return await handleStatusCommand(interaction, modules);
-    if (command === 'chaos')  return await handleChaosCommand(interaction, modules);
-    if (command === 'help')   return await handleHelpCommand(interaction, modules);
+      if (command === 'packy')  return await handlePackyCommand(interaction, modules);
+      if (command === 'mood')   return await handleMoodCommand(interaction, modules);
+      if (command === 'lore')   return await handleLoreCommand(interaction, modules);
+      if (command === 'war')    return await handleWarCommand(interaction, modules);
+      if (command === 'admin')  return await handleAdminCommand(interaction, modules);
+      if (command === 'snark')  return await handleSnarkCommand(interaction, modules);
+      if (command === 'status') return await handleStatusCommand(interaction, modules);
+      if (command === 'chaos')  return await handleChaosCommand(interaction, modules);
+      if (command === 'help')   return await handleHelpCommand(interaction, modules);
 
-    // Radio commands
-    if (command === 'radio') {
-      const sub = interaction.options.getSubcommand();
-      if (sub === 'play')       return await handleRadioPlay(interaction);
-      if (sub === 'stop')       return await handleRadioStop(interaction);
-      if (sub === 'stations')   return await handleRadioStations(interaction);
-      if (sub === 'nowplaying') return await handleRadioNowPlaying(interaction);
-      if (sub === 'volume')     return await handleRadioVolume(interaction);
-    }
+      // Radio commands
+      if (command === 'radio') {
+        const sub = interaction.options.getSubcommand();
+        if (sub === 'play')       return await handleRadioPlay(interaction);
+        if (sub === 'stop')       return await handleRadioStop(interaction);
+        if (sub === 'stations')   return await handleRadioStations(interaction);
+        if (sub === 'nowplaying') return await handleRadioNowPlaying(interaction);
+        if (sub === 'volume')     return await handleRadioVolume(interaction);
+      }
 
-    return await interaction.editReply('This command is not yet implemented.');
+      return await interaction.editReply('This command is not yet implemented.');
+    })();
+
+    const TIMEOUT_MS = 14 * 60 * 1000;
+    await Promise.race([
+      handlerPromise,
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Command handler timed out')), TIMEOUT_MS)
+      ),
+    ]);
   } catch (error) {
-    console.error('Error handling interaction:', error);
+    logger.error('Error handling interaction', { error: error instanceof Error ? error.message : error });
     try {
-      await interaction.editReply('Something broke in my circuits. Very embarrassing.');
-    } catch {
-      // Silently fail if can't edit reply
-    }
+      await interaction.editReply(withCode(ERR.UNKNOWN, 'Something broke in my circuits. Very embarrassing.'));
+    } catch { /* non-fatal: reply already failed */ }
+  } finally {
+    trackInFlight(-1);
   }
 }
 
@@ -475,18 +502,49 @@ client.on('messageCreate', handleMessage);
 client.on('interactionCreate', handleInteraction);
 
 // Graceful shutdown
-process.on('SIGINT', async () => {
-  logger.info('Received SIGINT, powering down');
-  shutdownAllRadio();
-  await client.destroy();
-  process.exit(0);
-});
+let _shuttingDown = false;
+let _inFlightCount = 0;
 
-process.on('SIGTERM', async () => {
-  logger.info('Received SIGTERM, powering down');
+export function trackInFlight(delta = 1) {
+  _inFlightCount += delta;
+}
+
+async function gracefulShutdown(signal) {
+  if (_shuttingDown) return;
+  _shuttingDown = true;
+  logger.info(`Received ${signal}, powering down`);
+
+  // Stop accepting new work
   shutdownAllRadio();
+  stopStateAutoSave();
+  stopConfigAutoSave();
+  stopChaosAutoSave();
+
+  // Wait for in-flight operations with 5s deadline
+  const deadline = Date.now() + 5000;
+  while (_inFlightCount > 0 && Date.now() < deadline) {
+    await new Promise(r => setTimeout(r, 100));
+  }
+  if (_inFlightCount > 0) {
+    logger.warn('Proceeding to shutdown with in-flight operations', { count: _inFlightCount });
+  }
+
+  // Flush pending saves
+  try { await saveGuildConfigs(); } catch { /* non-fatal */ }
+  try { await saveState(); } catch { /* non-fatal */ }
+  try { await saveChaosState(); } catch { /* non-fatal */ }
+
   await client.destroy();
   process.exit(0);
+}
+
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+
+// Alert handler — surface threshold breaches to an ops channel
+logger.on('alert', (payload) => {
+  logger.error('ALERT', payload);
+  // In production, post to a Discord ops channel or webhook
 });
 
 // Error handling

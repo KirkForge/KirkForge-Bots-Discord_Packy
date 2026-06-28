@@ -2,6 +2,7 @@
 // Implements keyword and mood-based matching for dynamic lore retrieval
 
 import fs from 'fs/promises';
+import { logger } from '../logger.js';
 import { classifyMessage } from './emotionClassifier.js';
 
 /**
@@ -14,7 +15,7 @@ export async function loadLorebook(lorePath) {
     const data = await fs.readFile(lorePath, 'utf-8');
     return JSON.parse(data);
   } catch (error) {
-    console.error(`Failed to load lorebook from ${lorePath}:`, error);
+    logger.error('Failed to load lorebook', { path: lorePath, error: error.message });
     return { categories: {} };
   }
 }
@@ -36,7 +37,7 @@ export async function loadConceptGraph(conceptGraphPath, categoryConceptsPath) {
       categoryConceptsMap: JSON.parse(categoryData),
     };
   } catch (error) {
-    console.error(`Failed to load concept graphs:`, error);
+    logger.error('Failed to load concept graphs', { error: error.message });
     return { conceptGraph: {}, categoryConceptsMap: {} };
   }
 }

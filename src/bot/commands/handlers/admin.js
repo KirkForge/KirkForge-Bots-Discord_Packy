@@ -1,4 +1,7 @@
 import { PermissionFlagsBits } from 'discord.js';
+import { logger } from '../../logger.js';
+import { logAudit } from '../../auditLog.js';
+import { ERR, withCode } from './errors.js';
 
 export async function handleAdminCommand(interaction, modules) {
   const { getGuildConfig, setGuildConfig, saveGuildConfigs } = modules;
@@ -10,6 +13,9 @@ export async function handleAdminCommand(interaction, modules) {
 
     const subcommand = interaction.options.getSubcommand();
     const guildId = interaction.guildId;
+    const userId = interaction.user.id;
+
+    logAudit({ type: 'admin', subcommand, guildId, userId, userTag: interaction.user.tag }).catch(() => {});
 
     if (subcommand === 'mute') {
       setGuildConfig(guildId, { botMuted: true });
@@ -94,10 +100,9 @@ export async function handleAdminCommand(interaction, modules) {
 
     return await interaction.editReply('Unknown admin subcommand.');
   } catch (error) {
-    console.error('Error handling /admin command:', error);
+    logger.error('Error handling /admin command:', { error: error instanceof Error ? error.message : error });
     try {
-      await interaction.editReply('Something broke in my circuits. Very embarrassing.');
-    } catch {
-    }
+      await interaction.editReply(withCode(ERR.ADMIN, 'Something broke in my circuits. Very embarrassing.'));
+    } catch { /* non-fatal */ }
   }
 }

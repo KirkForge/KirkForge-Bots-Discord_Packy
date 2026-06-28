@@ -1,5 +1,7 @@
 import { EmbedBuilder } from 'discord.js';
 import { getCurrentCharacter } from '../../character/randomizer.js';
+import { logger } from '../../logger.js';
+import { ERR, withCode } from './errors.js';
 import { COLORS } from './_shared.js';
 
 export async function handleStatusCommand(interaction, modules) {
@@ -51,10 +53,10 @@ export async function handleStatusCommand(interaction, modules) {
 
     await interaction.editReply({ embeds: [embed] });
   } catch (error) {
-    console.error('Error handling /status command:', error);
+    logger.error('Error handling /status command:', { error: error instanceof Error ? error.message : error });
     try {
-      await interaction.editReply('Status check failed. Very on-brand.');
-    } catch { /* silent */ }
+      await interaction.editReply(withCode(ERR.UNKNOWN, 'Status check failed. Very on-brand.'));
+    } catch { /* non-fatal */ }
   }
 }
 
@@ -109,9 +111,9 @@ export async function handleChaosCommand(interaction, modules) {
 
     await interaction.editReply({ embeds: [embed] });
   } catch (error) {
-    console.error('Error handling /chaos command:', error);
+    logger.error('Error handling /chaos command:', { error: error instanceof Error ? error.message : error });
     try {
-      await interaction.editReply('Chaos state unreadable. Ironic.');
-    } catch { /* silent */ }
+      await interaction.editReply(withCode(ERR.CHAOS, 'Chaos state unreadable. Ironic.'));
+    } catch { /* non-fatal */ }
   }
 }

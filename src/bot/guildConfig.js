@@ -1,6 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { logger } from './logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -22,7 +23,7 @@ export async function loadGuildConfigs() {
   try {
     const raw = await fs.readFile(CONFIG_FILE, 'utf-8');
     configCache = JSON.parse(raw);
-  } catch {
+  } catch { /* non-fatal: no config file yet */ 
     configCache = {};
   }
 }
@@ -44,7 +45,8 @@ export function setGuildConfig(guildId, updates) {
 
 export function isChannelAllowed(guildId, channelId) {
   const config = getGuildConfig(guildId);
-  if (!config.allowedChannels || config.allowedChannels.length === 0) return true;
+  // Empty allow-list = deny all (opt-in model).
+  if (!config.allowedChannels || config.allowedChannels.length === 0) return false;
   return config.allowedChannels.includes(channelId);
 }
 
@@ -57,7 +59,14 @@ export function startAutoSave(intervalMs = 5 * 60 * 1000) {
   if (_saveInterval) clearInterval(_saveInterval);
   _saveInterval = setInterval(() => {
     saveGuildConfigs().catch(error => {
-      console.error('Guild config auto-save failed:', error);
+      logger.error('Guild config auto-save failed', { error: error.message });
     });
   }, intervalMs);
+}
+
+export function stopAutoSave() {
+  if (_saveInterval) {
+    clearInterval(_saveInterval);
+    _saveInterval = null;
+  }
 }

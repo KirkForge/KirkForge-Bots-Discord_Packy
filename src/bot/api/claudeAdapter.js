@@ -5,6 +5,7 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
+import { logger } from '../logger.js';
 
 // Lazy-initialize: dotenv.config() runs in index.js before any API call,
 // but ESM module evaluation happens before that — so don't construct at load time.
@@ -156,9 +157,7 @@ export async function callWithRetry(
 
       // Exponential backoff: 1s, 2s, etc.
       const delayMs = Math.pow(2, attempt) * 1000;
-      console.warn(
-        `Claude API rate limited. Retrying in ${delayMs}ms (attempt ${attempt + 1}/${retries})`
-      );
+      logger.warn('Claude API rate limited, retrying', { delayMs, attempt: attempt + 1, retries });
       await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
   }

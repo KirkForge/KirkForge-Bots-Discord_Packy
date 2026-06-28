@@ -15,6 +15,7 @@ Endpoints:
 
 import sys
 import os
+import time
 from pathlib import Path
 
 # Add project root to path so imports work when run from project root
@@ -23,11 +24,14 @@ sys.path.insert(0, str(project_root))
 
 import logging
 from typing import Optional, Dict, Any, List
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 import uvicorn
 import httpx
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 try:
     import psutil
@@ -102,6 +106,11 @@ app = FastAPI(
     version=PRODUCT_VERSION,
 )
 
+# ---- Rate Limiting ----
+limiter = Limiter(key_func=get_remote_address, default_limits=[])
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 # Global FastAPI middleware for auth (skips /health, /docs, /openapi)
 # Registered after app creation — runs at module load
 @app.middleware("http")
@@ -135,17 +144,26 @@ _packy_instance: Optional[PackyBrain] = None
 _cog_engine: Optional[PackyCogEngine] = None
 _brain_loaded: bool = False
 _current_state: Dict[str, Any] = {}
+_last_init_attempt: float = 0.0
 
 def get_packy_instance() -> Optional[PackyBrain]:
-    """Get or create the global Packy instance."""
-    global _packy_instance
-    if _packy_instance is None:
-        try:
-            _packy_instance = get_packy()
-            logger.info("PackyBrain instance initialized successfully")
-        except Exception as e:
-            logger.exception("Failed to initialize PackyBrain: %s", e)
-            _packy_instance = None
+    """Get or create the global Packy instance, retrying with backoff on failure."""
+    global _packy_instance, _last_init_attempt
+    if _packy_instance is not None:
+        return _packy_instance
+
+    # Rate-limit retries: only attempt once every 30 seconds
+    now = time.monotonic()
+    if now - _last_init_attempt < 30:
+        return None
+
+    _last_init_attempt = now
+    try:
+        _packy_instance = get_packy()
+        logger.info("PackyBrain instance initialized successfully")
+    except Exception as e:
+        logger.exception("Failed to initialize PackyBrain: %s", e)
+        _packy_instance = None
     return _packy_instance
 
 def get_cog_engine() -> Optional[PackyCogEngine]:
@@ -448,7 +466,8 @@ app.include_router(scheduler_router, prefix="/scheduler")
 # ---- Endpoints ----
 
 @app.post("/respond", response_model=RespondResponse)
-async def respond(request: RespondRequest) -> RespondResponse:
+@limiter.limit("10/minute")
+async def respond(request: RespondRequest, req: Request) -> RespondResponse:
     """
     Process user text through full Packy pipeline:
     1. Resolve system state (CPU/temp -> mood/snark)
@@ -475,6 +494,10 @@ async def respond(request: RespondRequest) -> RespondResponse:
             cpu_pct=int(cpu),
             temp_c=float(request.temp)
         )
+
+        # Update global state cache for /state endpoint
+        _current_state.update(state_dict)
+        _current_state["cpu_pct"] = int(cpu)
 
         snark_level_str = state_dict.get("snark_level", "LOW")
         snark_float = map_snark_to_float(snark_level_str)

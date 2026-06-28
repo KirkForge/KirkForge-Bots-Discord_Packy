@@ -2,7 +2,9 @@ import { EmbedBuilder } from 'discord.js';
 import { computeSnark, computeMood } from '../../character/mood.js';
 import { getMixedSnark, getSnarkLines } from '../../character/snarkBank.js';
 import { isRateLimited } from '../../rateLimiter.js';
+import { logger } from '../../logger.js';
 import { COLORS, moodColor } from './_shared.js';
+import { ERR, withCode } from './errors.js';
 
 export async function handlePackyCommand(interaction, modules) {
   const { callDirect, callMicroservice } = modules;
@@ -12,7 +14,7 @@ export async function handlePackyCommand(interaction, modules) {
     return await interaction.editReply('You gonna say something, or are we just staring at each other?');
   }
 
-  if (isRateLimited(interaction.user.id)) {
+  if (await isRateLimited(interaction.user.id)) {
     return await interaction.editReply('Slow down meatbag. Even I need a moment.');
   }
 
@@ -43,11 +45,10 @@ export async function handlePackyCommand(interaction, modules) {
       } catch { /* non-fatal */ }
     }
   } catch (error) {
-    console.error('Error handling /packy command:', error);
+    logger.error('Error handling /packy command:', { error: error instanceof Error ? error.message : error });
     try {
-      await interaction.editReply('Something broke in my circuits. Very embarrassing.');
-    } catch {
-    }
+      await interaction.editReply(withCode(ERR.API_FAIL, 'Something broke in my circuits. Very embarrassing.'));
+    } catch { /* non-fatal */ }
   }
 }
 
@@ -67,7 +68,7 @@ export async function handleMoodCommand(interaction, modules) {
           weatherLocation
         );
       } catch {
-        console.error('Failed to read signals:', e.message);
+        logger.warn('Failed to read signals (signals module unavailable)');
       }
     }
 
@@ -109,11 +110,10 @@ export async function handleMoodCommand(interaction, modules) {
 
     await interaction.editReply({ embeds: [embed] });
   } catch (error) {
-    console.error('Error handling /mood command:', error);
+    logger.error('Error handling /mood command:', { error: error instanceof Error ? error.message : error });
     try {
-      await interaction.editReply('Something broke in my circuits. Very embarrassing.');
-    } catch {
-    }
+      await interaction.editReply(withCode(ERR.API_FAIL, 'Something broke in my circuits. Very embarrassing.'));
+    } catch { /* non-fatal */ }
   }
 }
 
@@ -142,10 +142,10 @@ export async function handleSnarkCommand(interaction, _modules) {
 
     await interaction.editReply({ embeds: [embed] });
   } catch (error) {
-    console.error('Error handling /snark command:', error);
+    logger.error('Error handling /snark command:', { error: error instanceof Error ? error.message : error });
     try {
-      await interaction.editReply("The snark engine is jammed. Ironic.");
-    } catch { /* silent */ }
+      await interaction.editReply(withCode(ERR.UNKNOWN, "The snark engine is jammed. Ironic."));
+    } catch { /* non-fatal */ }
   }
 }
 
@@ -214,9 +214,9 @@ export async function handleHelpCommand(interaction, _modules) {
 
     await interaction.editReply({ embeds: [embed] });
   } catch (error) {
-    console.error('Error handling /help command:', error);
+    logger.error('Error handling /help command:', { error: error instanceof Error ? error.message : error });
     try {
-      await interaction.editReply("Help system is broken. How fitting.");
-    } catch { /* silent */ }
+      await interaction.editReply(withCode(ERR.UNKNOWN, "Help system is broken. How fitting."));
+    } catch { /* non-fatal */ }
   }
 }

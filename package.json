@@ -9,7 +9,9 @@
     "dev": "nodemon src/bot/index.js",
     "register": "node src/bot/commands/register.js",
     "lint": "eslint src/",
-    "test": "node test/smoke.js"
+    "test": "node test/smoke.js",
+    "test:integration": "node test/integration/rateLimiter.test.js && node test/integration/guildConfig.test.js",
+    "test:all": "npm test && npm run test:integration"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",

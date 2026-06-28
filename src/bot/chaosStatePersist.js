@@ -5,6 +5,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { logger } from './logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -35,7 +36,7 @@ export async function loadChaosState() {
     cleanupExpiredLocks();
   } catch (error) {
     if (error.code !== 'ENOENT') {
-      console.warn('Failed to load chaos state:', error.message);
+      logger.warn('Failed to load chaos state', { error: error.message });
     }
     chaosCache = { channelLastInjection: {}, targetLocks: {} };
   }
@@ -57,7 +58,7 @@ export async function saveChaosState() {
     await fs.writeFile(tmpFile, JSON.stringify(chaosCache, null, 2), 'utf-8');
     await fs.rename(tmpFile, CHAOS_FILE);
   } catch (error) {
-    console.warn('Failed to save chaos state:', error.message);
+    logger.warn('Failed to save chaos state', { error: error.message });
   }
 }
 
@@ -172,7 +173,7 @@ export function startAutoSave(intervalMs = 5 * 60 * 1000) {
   if (_saveInterval) clearInterval(_saveInterval);
   _saveInterval = setInterval(() => {
     saveChaosState().catch(err => {
-      console.warn('Chaos state auto-save failed:', err.message);
+      logger.warn('Chaos state auto-save failed', { error: err.message });
     });
   }, intervalMs);
 }

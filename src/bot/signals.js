@@ -1,4 +1,5 @@
 import os from 'os';
+import { logger } from './logger.js';
 
 /**
  * Read current CPU load as percentage (0-100)
@@ -38,15 +39,13 @@ export async function readWeather(apiKey, location) {
       controller = new AbortController();
       timeoutId = setTimeout(() => controller.abort(), 5000);
       options.signal = controller.signal;
-    } catch {
-      // Fallback for environments without AbortController
-    }
+    } catch { /* non-fatal: no AbortController support */ }
 
     const response = await fetch(url.toString(), options);
     clearTimeout(timeoutId);
 
     if (!response.ok) {
-      console.warn(`[SIGNALS] Weather API returned ${response.status}`);
+      logger.warn('Weather API error', { status: response.status });
       return { temp: null, description: 'unknown' };
     }
 
@@ -57,9 +56,9 @@ export async function readWeather(apiKey, location) {
     };
   } catch (error) {
     if (error.name === 'AbortError') {
-      console.warn('[SIGNALS] Weather API request timed out');
+      logger.warn('Weather API request timed out');
     } else {
-      console.warn(`[SIGNALS] Weather API error: ${error.message}`);
+      logger.warn('Weather API error', { error: error.message });
     }
     return { temp: null, description: 'unknown' };
   }

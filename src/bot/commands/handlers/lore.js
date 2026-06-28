@@ -1,6 +1,8 @@
 import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { computeSnark, computeMood } from '../../character/mood.js';
 import { selectLore } from '../../character/loreSelector.js';
+import { logger } from '../../logger.js';
+import { ERR, withCode } from './errors.js';
 import { COLORS } from './_shared.js';
 
 export async function handleLoreCommand(interaction, modules) {
@@ -36,11 +38,10 @@ export async function handleLoreCommand(interaction, modules) {
 
     await interaction.editReply({ embeds: [embed] });
   } catch (error) {
-    console.error('Error handling /lore command:', error);
+    logger.error('Error handling /lore command:', { error: error instanceof Error ? error.message : error });
     try {
-      await interaction.editReply('Something broke in my circuits. Very embarrassing.');
-    } catch {
-    }
+      await interaction.editReply(withCode(ERR.LORE, 'Something broke in my circuits. Very embarrassing.'));
+    } catch { /* non-fatal */ }
   }
 }
 
@@ -94,11 +95,10 @@ export async function handleWarCommand(interaction, modules) {
 
     await interaction.editReply({ embeds: [embed], components: [warButton] });
   } catch (error) {
-    console.error('Error handling /war command:', error);
+    logger.error('Error handling /war command:', { error: error instanceof Error ? error.message : error });
     try {
-      await interaction.editReply('Something broke in my circuits. Very embarrassing.');
-    } catch {
-    }
+      await interaction.editReply(withCode(ERR.LORE, 'Something broke in my circuits. Very embarrassing.'));
+    } catch { /* non-fatal */ }
   }
 }
 
@@ -145,6 +145,9 @@ export async function handleWarButton(interaction, modules) {
 
     await interaction.editReply({ embeds: [embed], components: [warButton] });
   } catch (error) {
-    console.error('Error handling war button:', error);
+    logger.error('Error handling war button:', { error: error instanceof Error ? error.message : error });
+    try {
+      await interaction.editReply(withCode(ERR.LORE, 'War story engine misfired.'));
+    } catch { /* non-fatal */ }
   }
 }

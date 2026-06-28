@@ -51,7 +51,7 @@ const BLOCKED_WORDS = [
  * @param {string} characterName - Active character name
  * @returns {string} Filtered text
  */
-export function filterFamilyFriendly(text, characterName = 'Packy') {
+export function filterFamilyFriendly(text, _characterName = 'Packy') {
   let filtered = text;
 
   // Apply character-specific substitutions

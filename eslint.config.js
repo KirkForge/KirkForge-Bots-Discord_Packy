@@ -1,22 +1,32 @@
 import js from '@eslint/js';
-import globals from 'globals';
-import tseslint from 'typescript-eslint';
 
-export default tseslint.config(
+export default [
   { ignores: ['node_modules', 'dist', 'data'] },
   {
-    extends: [js.configs.recommended, ...tseslint.configs.recommended],
+    ...js.configs.recommended,
     files: ['**/*.{js,mjs,cjs}'],
     languageOptions: {
       ecmaVersion: 2022,
       globals: {
-        ...globals.node,
+        Buffer: 'readonly',
+        console: 'readonly',
+        exports: 'writable',
+        global: 'readonly',
+        module: 'readonly',
+        process: 'readonly',
+        require: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
+        URL: 'readonly',
+        fetch: 'readonly',
+        __dirname: 'readonly',
+        __filename: 'readonly',
       },
     },
     rules: {
-      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
-      'no-unused-vars': 'off',
-      '@typescript-eslint/no-explicit-any': 'warn',
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     },
   },
-);
+];

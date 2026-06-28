@@ -10,7 +10,9 @@ module.exports = {
       },
       max_memory_restart: '200M',
       error_file: 'logs/bot-error.log',
-      out_file: 'logs/bot-out.log'
+      out_file: 'logs/bot-out.log',
+      autorestart: true,
+      restart_delay: 3000
     },
     {
       name: 'gargoyle-packy-cognition',
@@ -21,7 +23,9 @@ module.exports = {
       },
       max_memory_restart: '300M',
       error_file: 'logs/cognition-error.log',
-      out_file: 'logs/cognition-out.log'
+      out_file: 'logs/cognition-out.log',
+      autorestart: true,
+      restart_delay: 3000
     }
   ]
 };

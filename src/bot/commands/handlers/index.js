@@ -2,4 +2,4 @@ export { handlePackyCommand, handleMoodCommand, handleSnarkCommand, handleHelpCo
 export { handleLoreCommand, handleWarCommand, handleWarButton } from './lore.js';
 export { handleStatusCommand, handleChaosCommand } from './system.js';
 export { handleAdminCommand } from './admin.js';
-export { handleRadioPlay, handleRadioStop, handleRadioStations, handleRadioNowPlaying, handleRadioVolume } from './radio.js';
+export { handleRadioPlay, handleRadioStop, handleRadioStations, handleRadioNowPlaying, handleRadioVolume, handleRadioStationsButton } from './radio.js';

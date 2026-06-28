@@ -8,7 +8,6 @@ import {
   setLastInjection, 
   getGuildTargetLocks, 
   setTargetLock,
-  clearTargetLock,
 } from '../chaosStatePersist.js';
 
 /**

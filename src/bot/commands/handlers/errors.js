@@ -1,0 +1,20 @@
+export const ERR = {
+  UNKNOWN:       'ERR_UNKNOWN',
+  TIMEOUT:       'ERR_TIMEOUT',
+  RATE_LIMIT:    'ERR_RATE_LIMIT',
+  API_FAIL:      'ERR_API_FAIL',
+  NOT_FOUND:     'ERR_NOT_FOUND',
+  PERMISSION:    'ERR_PERMISSION',
+  COGNITION_DOWN:'ERR_COGNITION_DOWN',
+  MICROSERVICE:  'ERR_MICROSERVICE',
+  INVALID_INPUT: 'ERR_INVALID_INPUT',
+  VOICE:         'ERR_VOICE',
+  RADIO:         'ERR_RADIO',
+  CHAOS:         'ERR_CHAOS',
+  LORE:          'ERR_LORE',
+  ADMIN:         'ERR_ADMIN',
+};
+
+export function withCode(code, message) {
+  return `${message} (${code})`;
+}

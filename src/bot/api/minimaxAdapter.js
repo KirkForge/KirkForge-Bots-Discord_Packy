@@ -4,6 +4,8 @@
  * Alternative provider with same interface as Claude adapter
  */
 
+import { logger } from '../logger.js';
+
 const MINIMAX_API_ENDPOINT = 'https://api.minimaxi.chat/v1/text/chatcompletion_v2';
 
 /**
@@ -81,7 +83,7 @@ export async function callMiniMax(systemPrompt, userText, options = {}) {
         try {
           const errorBody = await response.json();
           errorDetails = JSON.stringify(errorBody);
-        } catch {
+        } catch { /* non-fatal: fallback to text */ 
           errorDetails = await response.text();
         }
       } else {
@@ -191,9 +193,7 @@ export async function callWithRetry(
 
       // Exponential backoff: 1s, 2s, etc.
       const delayMs = Math.pow(2, attempt) * 1000;
-      console.warn(
-        `MiniMax API rate limited. Retrying in ${delayMs}ms (attempt ${attempt + 1}/${retries})`
-      );
+      logger.warn('MiniMax API rate limited, retrying', { delayMs, attempt: attempt + 1, retries });
       await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
   }

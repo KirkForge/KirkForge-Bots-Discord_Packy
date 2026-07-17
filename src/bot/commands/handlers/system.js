@@ -8,7 +8,6 @@ export async function handleStatusCommand(interaction, modules) {
   const { lorebook } = modules;
 
   try {
-    const BOT_MODE = process.env.BOT_MODE || 'microservice';
     const PRIMARY_ADAPTER = process.env.PRIMARY_ADAPTER || 'claude';
     const COGNITION_PORT = process.env.COGNITION_PORT || '8765';
 
@@ -28,7 +27,7 @@ export async function handleStatusCommand(interaction, modules) {
     }
     const categoryCount = lorebook?.categories ? Object.keys(lorebook.categories).length : 0;
 
-    const modeIcon = BOT_MODE === 'direct' ? '⚡ direct' : '🔗 microservice';
+    const modeIcon = '🔗 microservice';
     const adapterIcon = PRIMARY_ADAPTER === 'claude' ? '🤖 Claude' : '🧠 MiniMax';
 
     const activeChar = getCurrentCharacter();
@@ -45,7 +44,7 @@ export async function handleStatusCommand(interaction, modules) {
         { name: 'Uptime',      value: uptimeStr,                       inline: true },
         { name: 'Guilds',      value: String(guildCount),              inline: true },
         { name: 'Lorebook',    value: `${loreCount} entries / ${categoryCount} categories`, inline: true },
-        { name: 'Port',        value: BOT_MODE === 'microservice' ? COGNITION_PORT : 'N/A', inline: true },
+        { name: 'Port',        value: COGNITION_PORT, inline: true },
       )
       .setDescription(charDesc ? `*${charDesc}*` : null)
       .setFooter({ text: `${charName} v2.0.0 — still operational, unfortunately` })

@@ -4,17 +4,13 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 // Import character system modules
-import { getCurrentPrompt, getCurrentState, getCurrentCharacter, processResponse } from './character/randomizer.js';
+import { getCurrentCharacter, processResponse } from './character/randomizer.js';
 import { getMixedSnark } from './character/snarkBank.js';
-import { loadLorebook, selectLore, loadConceptGraph } from './character/loreSelector.js';
-import { PackyState } from './character/state.js'; // kept for legacy compat
-import { getResponseStyleLimit } from './character/systemPrompt.js';
+import { loadLorebook, loadConceptGraph } from './character/loreSelector.js';
 import { computeSnark, computeMood } from './character/mood.js';
-import { extractKeywords } from './character/keywords.js';
 import {
   createChaosState,
   computeChaosScore,
-  applyMoodOverride,
   shouldFireUnprovoked,
   recordInjection,
 } from './character/chaosState.js';
@@ -24,9 +20,9 @@ import { withCode, ERR } from './commands/handlers/errors.js';
 import { loadChaosState, startAutoSave as startChaosAutoSave, saveChaosState, stopAutoSave as stopChaosAutoSave } from './chaosStatePersist.js';
 import { filterFamilyFriendly } from './character/contentFilter.js';
 
-// Import API adapters
-import { callWithRetry as callClaude } from './api/claudeAdapter.js';
-import { callWithRetry as callMiniMax } from './api/minimaxAdapter.js';
+// ponytail: API adapters live in the Python cognition service (/respond) per
+// ADR-003. The JS direct-mode adapter calls were the removed duplicate
+// pipeline (ADR-010); no JS adapter imports remain.
 
 // Import shared rate limiter
 import { isRateLimited } from './rateLimiter.js';
@@ -65,7 +61,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
-const BOT_MODE = process.env.BOT_MODE || 'microservice'; // 'direct' or 'microservice'
+const BOT_MODE = process.env.BOT_MODE || 'microservice'; // 'microservice' only (direct removed, ADR-010); retained for status logging
 const PRIMARY_ADAPTER = process.env.PRIMARY_ADAPTER || 'claude'; // 'claude' or 'minimax'
 const COGNITION_PORT = process.env.COGNITION_PORT || 8765;
 const MAX_INPUT_CHARS = parseInt(process.env.MAX_INPUT_CHARS || '1500', 10);
@@ -134,71 +130,11 @@ async function callMicroservice(userText, guildId, userId, retries = 2) {
   return withCode(ERR.COGNITION_DOWN, 'My brain is offline. Check if the cognition service is running.');
 }
 
-/**
- * Call the API directly with real implementation
- * Builds state, selects lore, constructs system prompt, and calls chosen adapter
- * @param {string} userText - The user's message
- * @param {string} guildId - Discord guild ID
- * @param {string} userId - Discord user ID
- * @returns {Promise<{text: string, state: object}>} Response text and Packy state
- */
-async function callDirect(userText, _guildId, _userId) {
-  try {
-    // Read live signals (CPU + weather)
-    const signals = await readSignals(
-      process.env.OPENWEATHER_API_KEY,
-      process.env.PACKY_LOCATION || 'London'
-    );
-
-    // Use active character state (from randomizer)
-    let state = getCurrentState();
-    
-    // Fallback to PackyState if needed (shouldn't happen after randomizer init)
-    if (!state) {
-      state = new PackyState();
-    }
-
-    // Character-specific signal processing
-    const snarkLevel = computeSnark(signals.cpu, signals.temp ?? 20);
-    const mood = computeMood(snarkLevel);
-    const keywords = extractKeywords(userText);
-
-    state.turn++;
-    state.snark = snarkLevel;
-    state.mood = mood;
-    state.keywords = keywords;
-    state.cpu = signals.cpu;
-    state.temp = signals.temp;
-    state.weather = signals.weather;
-
-    // Select lore entries using character-specific lorebook
-    const loreEntries = selectLore(lorebook, userText, mood, 2, conceptGraphData, categoryConceptsData);
-
-    // Get snark lines
-    const snarkLines = getMixedSnark(2);
-
-    // Build system prompt using active character
-    const systemPrompt = getCurrentPrompt(loreEntries.map(text => ({ text })), snarkLines);
-
-    // Apply mood override to response length
-    const responseStyleLimit = getResponseStyleLimit(mood);
-    const maxChars = applyMoodOverride(mood, responseStyleLimit.maxChars);
-
-    // Call adapter based on PRIMARY_ADAPTER env var
-    let result;
-    if (PRIMARY_ADAPTER === 'minimax') {
-      result = await callMiniMax(systemPrompt, userText, { maxTokens: maxChars });
-    } else {
-      // Default to claude
-      result = await callClaude(systemPrompt, userText, { maxTokens: maxChars });
-    }
-
-    return { text: result.text || 'I got nothing.', state };
-  } catch (error) {
-    logger.error('Direct API call failed', { error: error.message });
-    return { text: withCode(ERR.API_FAIL, 'API call crashed. How typical.'), state: null };
-  }
-}
+// ponytail: callDirect (the JS-side full cognition pipeline + direct adapter
+// call) was the duplicate LLM path. Removed per ADR-003/010 — the Python
+// cognition service /respond is the single LLM call path; callMicroservice is
+// the only caller. WithCode/ERR/readSignals etc. remain used by
+// callMicroservice, the chaos hook, and the modules export below.
 
 /**
  * Main handler for incoming messages
@@ -305,17 +241,8 @@ async function handleMessage(message) {
   }
 
   try {
-    let response;
-    let packyState = null;
-
-    if (BOT_MODE === 'direct') {
-      const result = await callDirect(userText, message.guildId, message.author.id);
-      response = result.text;
-      packyState = result.state;
-    } else {
-      // default to microservice mode
-      response = await callMicroservice(userText, message.guildId, message.author.id);
-    }
+    // ponytail: single LLM call path — Python cognition /respond (ADR-003/010).
+    let response = await callMicroservice(userText, message.guildId, message.author.id);
 
     // Process response (Glitch may corrupt output)
     let processedResponse = processResponse(response);
@@ -342,8 +269,7 @@ async function handleMessage(message) {
     // Update user state after successful reply (single call = +1 interaction count)
     try {
       if (message.guildId) {
-        const stateUpdate = packyState ? { mood_history: [packyState.mood] } : {};
-        updateUserState(message.guildId, message.author.id, stateUpdate);
+        updateUserState(message.guildId, message.author.id, {});
       }
     } catch { /* non-fatal */ }
 
@@ -372,7 +298,6 @@ async function handleInteraction(interaction) {
     conceptGraphData,
     categoryConceptsData,
     channelChaos,
-    callDirect,
     callMicroservice,
     readSignals,
     getGuildConfig,

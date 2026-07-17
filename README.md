@@ -21,9 +21,7 @@ Discord
 Bot (Node.js / discord.js)          ← src/bot/
   │  character layer: mood, lore, snark, chaos
   │
-  ├─── direct mode ──────────────── Claude / MiniMax API
-  │
-  └─── microservice mode ────────── Cognition Service (Python / FastAPI)
+  └─── cognition /respond ──────── Cognition Service (Python / FastAPI)
                                         src/orchestration/packy_endpoint.py
                                         PackyBrain + PackyCogEngine
                                         ↓
@@ -80,12 +78,11 @@ Also responds to `!packy` prefix and @mentions.
 
 ## Bot Modes
 
-| Mode | Set via | Behaviour |
-|------|---------|-----------|
-| `direct` | `BOT_MODE=direct` | Bot calls Claude/MiniMax API directly. No Python service needed. |
-| `microservice` | `BOT_MODE=microservice` | Bot calls Python FastAPI service which runs the full cognition pipeline. |
-
-Default: `microservice`. Use `direct` for lightweight deployments.
+The bot calls the Python cognition service (`/respond`) which runs the full
+cognition pipeline (PackyBrain + mood + lore + snark + chaos) and the LLM
+adapter call. This is the single LLM call path (ADR-003/010); the JS-side
+`direct` mode was a duplicate pipeline and has been removed. `BOT_MODE` is
+retained only as a cosmetic status field.
 
 ---
 
@@ -98,7 +95,7 @@ See `.env.example` for the full list with descriptions. Key ones:
 - `PRIMARY_ADAPTER` — `claude` or `minimax` (default: `claude`)
 - `ANTHROPIC_API_KEY` — required if using Claude
 - `MINIMAX_API_KEY` + `MINIMAX_GROUP_ID` — required if using MiniMax
-- `BOT_MODE` — `direct` or `microservice`
+- `BOT_MODE` — cosmetic status field; `microservice` is the only supported mode (direct removed, ADR-010)
 
 ---
 
@@ -111,10 +108,8 @@ src/
     signals.js            — CPU + weather reading
     userState.js          — Per-user interaction tracking
     guildConfig.js        — Per-guild settings
-    api/
-      claudeAdapter.js    — Claude API adapter
-      minimaxAdapter.js   — MiniMax API adapter
     character/
+      randomizer.js       — Multi-character selector + active persona prompt (ADR-014)
       state.js            — PackyState
       mood.js             — Snark/mood computation
       keywords.js         — Keyword extraction
@@ -123,9 +118,13 @@ src/
       loreSelector.js     — Lore injection engine
       emotionClassifier.js — User message → emotion/intent/topic tokens for lore scoring
       chaosState.js       — Controlled Chaos Layer (ADR-008)
+      glitch/ kronos/ vernon/ sunjinwo/ — per-character prompt, snark, state
+    radio/
+      radioPlayer.js      — Voice channel join/leave + playback (ADR-015)
+      radioStations.js    — Station catalog (DR, Commercial, International)
     commands/
       register.js         — Slash command registration
-      handlers.js         — Slash command + interaction handlers (Discord embeds, rate limiting)
+      handlers/          — Slash command + interaction handlers (core, lore, radio, admin, system)
 
   cognition/              — Python character engine
     packy_brain.py        — Central integration hub
@@ -137,9 +136,17 @@ src/
     layer/                — Orchestration layer (state, signals, mood, keywords)
     generators/           — Script generators (bash, python, powershell)
     persistent/           — Memory/state persistence
+    services/             — Personal-assistant surface (alarms, reminders, scheduler,
+                              tts_engine, google/) — live, mounted (ADR-009)
 
   orchestration/
-    packy_endpoint.py     — FastAPI microservice entry point
+    packy_endpoint.py     — FastAPI microservice entry point (cognition /respond +
+                              license boot gate, ADR-011)
+
+license/                  — Ed25519 license verify + tiers (ADR-011)
+sales/                    — Stripe purchase + license issuance service (ADR-012)
+update/                   — Signed update channel, customer side (ADR-013)
+tools/                    — Operator tooling (keygen, release)
 
 data/
   lorebook/               — Structured lore (88KB + sub-lore JSON files)
@@ -147,7 +154,7 @@ data/
   pending_lore/           — Packy-generated lore awaiting review
 
 docs/
-  ADR.md                  — Architecture decisions (8 ADRs including Chaos Layer)
+  ADR.md                  — Architecture decisions (15 ADRs: 001–008 original, 009–015 commercial + feature)
   PROJECT_OVERVIEW.md     — Full architecture map
   MINIMAX_PROMPTS.md      — Ready-to-use MiniMax prompts for content generation
   design/                 — Engine reference documents (ORBIT, PULSE, AURA, HYBRID)

@@ -7,7 +7,7 @@ import { COLORS, moodColor } from './_shared.js';
 import { ERR, withCode } from './errors.js';
 
 export async function handlePackyCommand(interaction, modules) {
-  const { callDirect, callMicroservice } = modules;
+  const { callMicroservice } = modules;
   const userText = interaction.options.getString('message');
 
   if (!userText) {
@@ -19,18 +19,8 @@ export async function handlePackyCommand(interaction, modules) {
   }
 
   try {
-    let response;
-    let packyState = null;
-
-    const BOT_MODE = process.env.BOT_MODE || 'microservice';
-
-    if (BOT_MODE === 'direct') {
-      const result = await callDirect(userText, interaction.guildId, interaction.user.id);
-      response = result.text;
-      packyState = result.state;
-    } else {
-      response = await callMicroservice(userText, interaction.guildId, interaction.user.id);
-    }
+    // ponytail: single LLM call path — Python cognition /respond (ADR-003/010).
+    let response = await callMicroservice(userText, interaction.guildId, interaction.user.id);
 
     if (response.length > 1990) {
       response = response.substring(0, 1990) + '...';
@@ -40,8 +30,7 @@ export async function handlePackyCommand(interaction, modules) {
 
     if (modules.updateUserState && interaction.guildId) {
       try {
-        const stateUpdate = packyState ? { mood_history: [packyState.mood] } : {};
-        modules.updateUserState(interaction.guildId, interaction.user.id, stateUpdate);
+        modules.updateUserState(interaction.guildId, interaction.user.id, {});
       } catch { /* non-fatal */ }
     }
   } catch (error) {

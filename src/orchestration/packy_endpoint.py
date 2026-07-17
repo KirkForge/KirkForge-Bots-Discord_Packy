@@ -16,6 +16,7 @@ Endpoints:
 import sys
 import os
 import time
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 # Add project root to path so imports work when run from project root
@@ -56,6 +57,12 @@ from license import (
     LicenseFormatError,
     LicenseProductMismatchError,
     LoadedLicense,
+    LicenseClaims,
+    Customer,
+    PRODUCT_ID,
+    TIER_COMMUNITY,
+    TIER_FEATURES,
+    LICENSE_FORMAT_VERSION,
     load as load_license,
 )
 
@@ -389,6 +396,40 @@ class LoreResponse(BaseModel):
 
 # ---- License gate ----
 
+# ponytail: dev-bypass for clean-clone boot. No license file + PACKY_DEV_LICENSE=1
+# loads a community-tier pseudo-license (lowest tier — nothing to forge) with a
+# loud warning, skipping signature verification. Production without the env var
+# still exits 1 on a missing file. Ceiling: an operator can always set the env
+# var to get community tier, which grants only the free features (core character
+# + single-server bot), so the trust cost is nil — forging paid tiers still
+# needs a signed file. Upgrade path: ship a signed community license generated
+# with `python -m tools.keygen` (requires the dev private key, intentionally not
+# in-repo) and drop this bypass.
+_DEV_LICENSE_ENV = "PACKY_DEV_LICENSE"
+
+
+def _dev_license_enabled() -> bool:
+    return os.getenv(_DEV_LICENSE_ENV, "").strip().lower() in ("1", "true", "yes")
+
+
+def _dev_community_license() -> LoadedLicense:
+    """Build an unsigned community-tier pseudo-license for dev boot only."""
+    now = datetime.now(timezone.utc)
+    claims = LicenseClaims(
+        license_id="dev-community",
+        product=PRODUCT_ID,
+        product_version="2.0.0",
+        format_version=LICENSE_FORMAT_VERSION,
+        customer=Customer(name="Dev", email="dev@local"),
+        tier=TIER_COMMUNITY,
+        issued_at=now,
+        support_until=now + timedelta(days=365),
+        max_seats=1,
+        features=tuple(TIER_FEATURES[TIER_COMMUNITY]),
+    )
+    return LoadedLicense(claims=claims, source_path=Path("<dev>"))
+
+
 def boot_license() -> LoadedLicense:
     """Verify the license at process start. Any failure → exit 1.
 
@@ -396,15 +437,28 @@ def boot_license() -> LoadedLicense:
     paths, verify the Ed25519 signature against the embedded public key,
     confirm the product field matches `gargoyle-packy`, and stash the
     result in `license.current` so any feature gate downstream can query it.
+
+    Dev bypass: PACKY_DEV_LICENSE=1 with no license file boots a community-tier
+    pseudo-license (no signature check). See _dev_community_license.
     """
     try:
         loaded = load_license()
     except LicenseNotFoundError as exc:
-        sys.stderr.write("\n" + "=" * 70 + "\n")
-        sys.stderr.write("  Gargoyle Packy — LICENSE NOT FOUND\n")
-        sys.stderr.write("=" * 70 + "\n\n")
-        sys.stderr.write(str(exc) + "\n")
-        sys.exit(1)
+        if _dev_license_enabled():
+            sys.stderr.write(
+                "\n" + "=" * 70 + "\n"
+                "  Gargoyle Packy — DEV LICENSE (no signature)\n"
+                "  PACKY_DEV_LICENSE=1 set and no license file found.\n"
+                "  Booting community tier for local dev. NOT FOR PRODUCTION.\n"
+                + "=" * 70 + "\n\n"
+            )
+            loaded = _dev_community_license()
+        else:
+            sys.stderr.write("\n" + "=" * 70 + "\n")
+            sys.stderr.write("  Gargoyle Packy — LICENSE NOT FOUND\n")
+            sys.stderr.write("=" * 70 + "\n\n")
+            sys.stderr.write(str(exc) + "\n")
+            sys.exit(1)
     except (LicenseSignatureError, LicenseFormatError) as exc:
         sys.stderr.write("\n" + "=" * 70 + "\n")
         sys.stderr.write("  Gargoyle Packy — LICENSE INVALID\n")

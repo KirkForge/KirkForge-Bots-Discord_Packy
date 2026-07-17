@@ -15,12 +15,14 @@ Run: pytest tests/test_license.py -v
 from __future__ import annotations
 
 import json
+import sys
 import tempfile
 from pathlib import Path
 
 import pytest
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
+import license as lic_mod
 import license.keys as license_keys_mod
 from license import (
     FEATURE_ADVANCED_LORE,
@@ -155,8 +157,10 @@ def test_specialist_license_rejected_on_packy(license_keypair, tmp_path):
 
 
 def test_placeholder_public_key_refuses_to_verify(tmp_path, monkeypatch):
-    # Restore the placeholder (all-zeros) key — the license was signed
-    # with a real key, so verification will fail.
+    # A degenerate all-zeros embedded key must refuse to verify a license
+    # signed by any real key. (Guards against someone shipping a zeroed key.)
+    # Note: the actual embedded placeholder in license/keys.py is a real
+    # 32-byte dev key, NOT all-zeros — see test_embedded_placeholder_key_is_real.
     monkeypatch.setattr(license_keys_mod, "PUBLIC_KEY_RAW", bytes(32))
     priv = Ed25519PrivateKey.generate()
     license_dict = make_signed_license(priv, tier=TIER_PRO)
@@ -165,6 +169,39 @@ def test_placeholder_public_key_refuses_to_verify(tmp_path, monkeypatch):
 
     with pytest.raises(LicenseSignatureError):
         load(path=path)
+
+
+def test_embedded_placeholder_key_is_real():
+    # The embedded placeholder must be a valid 32-byte Ed25519 public key,
+    # not all-zeros — a zeroed key would brick signature verification on a
+    # clean clone. Operator rotates it via `python -m tools.keygen` before
+    # shipping commercial builds (see license/keys.py).
+    key = license_keys_mod.PUBLIC_KEY_RAW
+    assert isinstance(key, (bytes, bytearray))
+    assert len(key) == 32
+    assert bytes(key) != bytes(32), "embedded public key is all-zeros — broken build"
+
+
+def test_dev_license_bypass_boots_community(monkeypatch, tmp_path):
+    # PACKY_DEV_LICENSE=1 with no license file boots a community-tier
+    # pseudo-license instead of exiting 1. Production (env unset) still bricks.
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("PACKY_LICENSE_PATH", str(tmp_path / "no-such-license.json"))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "no-cfg"))
+    monkeypatch.setenv("PACKY_DEV_LICENSE", "1")
+
+    if "src.orchestration.packy_endpoint" in sys.modules:
+        del sys.modules["src.orchestration.packy_endpoint"]
+    from src.orchestration import packy_endpoint
+    try:
+        loaded = packy_endpoint.boot_license()
+        assert loaded.tier == TIER_COMMUNITY
+        assert loaded.license_id == "dev-community"
+        assert not loaded.has_feature(FEATURE_MULTI_GUILD)  # community is the floor
+    finally:
+        lic_mod.current = None
+        if "src.orchestration.packy_endpoint" in sys.modules:
+            del sys.modules["src.orchestration.packy_endpoint"]
 
 
 def test_garbage_signature_rejected(license_keypair, tmp_path):

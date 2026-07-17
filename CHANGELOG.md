@@ -59,7 +59,7 @@
 
 ### New — Docs
 
-- `docs/ADR.md` — 8 Architecture Decision Records
+- `docs/ADR.md` — 15 Architecture Decision Records (001–008 original, 009–015 commercial + feature)
 - `docs/PROJECT_OVERVIEW.md` — Full architecture map
 - `docs/MINIMAX_PROMPTS.md` — 7 ready-to-use MiniMax prompts for content generation
 - `LLM_readmap.md` — LLM-first context document for cold-start sessions
@@ -70,8 +70,8 @@
 - LoRA checkpoints (checkpoint-10 through checkpoint-170) — not carried forward
 - llama_adapter.py — archived to `docs/design/llama_adapter_ref.py`
 - Web terminal UI (index.html, app.js, Flask routes) — deferred
-- TTS engine, alarms, reminders, scheduler — personal assistant features, out of scope
-- Google OAuth CLI — out of scope
+- TTS engine, alarms, reminders, scheduler — original `python_core.*` zip artifacts not extracted verbatim; functionality re-implemented live in `src/cognition/services/` and mounted on the cognition service (see ADR-009)
+- Google OAuth — original `google_oauth_cli.py` zip artifact not extracted; re-implemented live in `src/cognition/services/google/` (see ADR-009)
 
 ---
 

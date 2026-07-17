@@ -42,3 +42,7 @@ token_*.json
 client_secret*.json
 credentials.json
 *.bak
+
+# Runtime / generated config (do not commit)
+data/guild_config.json
+tsconfig.json

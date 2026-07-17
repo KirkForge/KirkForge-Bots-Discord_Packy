@@ -179,15 +179,15 @@ The following are **not extracted** into GargoylePackyV2 and exist only in the o
 | `packy_1.zip` (234MB) | LoRA checkpoints only |
 | `packy_backup.zip/runtime/models_raw/` | GPT-2 model weights (548MB), not used |
 | `packy_backup.zip/music/` | Audio files, not relevant to Discord bot |
-| `repo_snapshot_v2/v4` | Old TTS/alarms/reminders/web UI — superseded |
-| `packy_core_adapter.py` | TTS/alarms/media adapter — not relevant to Discord |
-| `python_core.*` (scheduler, alarms, reminders, tts_engine) | Personal assistant features, not in scope |
+| `repo_snapshot_v2/v4` | Old TTS/alarms/reminders/web UI zip artifacts — not extracted verbatim. TTS/alarms/reminders/scheduler functionality is re-implemented live in `src/cognition/services/` and mounted on the cognition service (see ADR-009). The old web UI only is deferred. |
+| `packy_core_adapter.py` | Old TTS/alarms/media zip adapter — not extracted verbatim. Functionality re-implemented live (see ADR-009). |
+| `python_core.*` (scheduler, alarms, reminders, tts_engine) | Old zip modules — not extracted verbatim. Re-implemented live in `src/cognition/services/{scheduler,alarms,reminders,tts_engine}.py` and mounted at `packy_endpoint.py:462-464` (see ADR-009). Not "out of scope" — ADR-003 preserves the whole cognition layer. |
 | `venv/` (from packy_v205.tar.gz) | Virtual environment, not committed |
 | `__pycache__/`, `*.pyc` | Build artifacts |
 | `packy.zip` | Corrupt archive — no central directory |
 | `legacy/*.bak` files | Legacy backups |
 | `web_ui/` (index.html, app.js, Flask routes) | Old web surface, deferred |
-| `google_oauth_cli.py` | Not in scope |
+| `google_oauth_cli.py` | Old zip CLI — not extracted verbatim. Re-implemented live in `src/cognition/services/google/` (see ADR-009). |
 
 ---
 
@@ -310,3 +310,158 @@ last_injection_ts: int
 - Chaos must never break core system functionality, corrupt persistent data, or interfere with admin control
 - All chaos actions must be logged and reproducible via debug mode
 - Chaos frequency must be tunable via config
+
+---
+
+## ADR-009: Personal-Assistant Cognition Services Retained as Live Surface
+
+**Status:** Accepted
+**Date:** 2026-07-17
+
+### Context
+
+ADR-007 listed `python_core.*` (scheduler, alarms, reminders, tts_engine), `packy_core_adapter.py`, and `google_oauth_cli.py` as "not extracted / not in scope," and the CHANGELOG echoed "TTS engine, alarms, reminders, scheduler — personal assistant features, out of scope." That framing was misleading: the *original zip artifacts* were indeed not extracted verbatim, but the *functionality* was re-implemented and is live in the repo:
+
+- `src/cognition/services/{alarms,reminders,scheduler,tts_engine}.py` exist
+- `src/orchestration/alarm_routes.py` exposes `alarm_router`, `reminder_router`, `scheduler_router`, mounted at `packy_endpoint.py:462-464` (`/alarms`, `/reminders`, `/scheduler`)
+- `tts_engine` is actively called by `media_player.py:51` and `actions/tts.py`, `actions/alarm_actions.py`
+- `src/cognition/services/google/` ships `google_calendar.py`, `google_gmail.py`, `google_services.py`
+
+ADR-003 already says "Nothing in this [cognition] layer is discarded," so ADR-007's "out of scope" rows contradicted both ADR-003 and the mounted code.
+
+### Decision
+
+Keep the personal-assistant services as a live surface on the cognition microservice. They are preserved per ADR-003 (the whole cognition layer stays) and are internally referenced (TTS by media_player/actions), so removing them would be destructive and would break the "clean clone boots" gate. ADR-007 and the CHANGELOG have been corrected to distinguish "original zip artifact not extracted" from "functionality absent" — the latter was never true.
+
+### Consequences
+
+- The cognition service is a dual-purpose surface: the character `/respond` pipeline *and* personal-assistant REST routes. The bot does not currently call `/alarms`|`/reminders`|`/scheduler` directly; they are exposed for the admin/dev panel and future surfaces.
+- Docs no longer contradict mounted code. The gate "no 'out of scope'/'discarded' claim contradicted by present+mounted code" holds.
+
+---
+
+## ADR-010: Single LLM Call Path — Direct Mode Removed
+
+**Status:** Accepted
+**Date:** 2026-07-17
+
+### Context
+
+Two parallel, complete LLM-call pipelines existed:
+
+- `BOT_MODE=microservice` (deployed default): `callMicroservice` → Python `/respond` runs the full cognition pipeline (PackyBrain + mood + lore + snark + chaos + adapter call).
+- `BOT_MODE=direct`: `callDirect` (JS) reimplemented the whole pipeline in Node — read signals, compute snark/mood, select lore, build prompt, call the JS `claudeAdapter`/`minimaxAdapter` directly.
+
+`direct` mode contradicted ADR-003 (cognition stays in Python; bot calls `/respond`) and ADR-008 (the chaos layer lives in the cognition pipeline, which `direct` bypassed). It was documented in README as a supported mode but was not the deployed default and duplicated the entire intelligence layer in JS.
+
+### Decision
+
+Remove `direct` mode. `callMicroservice` → Python `/respond` is the single LLM call path. Deleted: `callDirect`, the `BOT_MODE` branch in both call sites (`core.js`, `index.js` message handler), the now-orphaned JS adapters (`src/bot/api/claudeAdapter.js`, `minimaxAdapter.js`) and their orphaned simulation test (`test/test_adapters.js`), and the dead imports. `BOT_MODE` and `PRIMARY_ADAPTER` are retained only as cosmetic `/status` fields; the adapter selection itself happens Python-side (`packy_endpoint.py:238-241`).
+
+### Consequences
+
+- One pipeline to test, debug, and reason about. The Python cognition layer is the sole intelligence path, matching ADR-003/008.
+- Per-command `mood_history` population (previously only set in `direct` mode) is no longer written from the bot; `updateUserState` still increments interaction count. mood_history was already unpopulated in the deployed `microservice` default, so production behavior is unchanged.
+- A clean clone boots with the cognition service running the real pipeline.
+
+---
+
+## ADR-011: License Verification & Boot Gate
+
+**Status:** Accepted
+**Date:** 2026-07-17
+
+### Context
+
+Gargoyle Packy is a commercial product with tiered features (community/indie/pro/enterprise, see `license/features.py`). The cognition service must refuse to start without a verifiable license, and paid tiers must be unforgeable.
+
+### Decision
+
+Ed25519 offline license verification. The 32-byte raw public key is embedded in `license/keys.py`; the matching private key lives only on the operator's machine (`tools/keygen.py`, never shipped). `license/verifier.py` verifies the signature over a canonical JSON payload (sorted keys, no whitespace) *before* any claim value is trusted, so a forged `tier: "enterprise"` is rejected. `boot_license()` (`packy_endpoint.py`) runs at FastAPI startup and exits 1 on any `LicenseError`. Search paths are defined in `license/paths.py` (`$PACKY_LICENSE_PATH`, `./license.json`, XDG, `/etc/kirkforge/packy`).
+
+**Dev bypass:** `PACKY_DEV_LICENSE=1` with no license file boots a community-tier pseudo-license (no signature check) with a loud stderr warning. The community tier is the free floor (core character + single-server bot), so there is nothing to forge; paid tiers still require a signed file. This lets a clean clone boot for local dev while keeping production enforcement unchanged. The embedded key is a real 32-byte dev key (not all-zeros) — `test_embedded_placeholder_key_is_real` guards against a zeroed-key build, and `test_placeholder_public_key_refuses_to_verify` guards that a degenerate key rejects real signatures.
+
+### Consequences
+
+- Clean clone boots in dev (`PACKY_DEV_LICENSE=1`); production bricks without a signed license (by design).
+- Operator rotates the key via `python -m tools.keygen --init` and pastes the new public key into `license/keys.py` before shipping commercial builds. Rotation requires re-signing every active license.
+
+---
+
+## ADR-012: Sales Service (Stripe + License Issuance)
+
+**Status:** Accepted
+**Date:** 2026-07-17
+
+### Context
+
+Paid licenses must be issued automatically on purchase, without operator manual signing per sale.
+
+### Decision
+
+A separate FastAPI sales service (`sales/`) is the public-facing purchase surface. Wire order (`sales/app.py`): load env-driven fail-closed config (`sales/config.py` — no secret has a usable default), open SQLite DB (file mode 600), load the Ed25519 signing key (PEM, mode 600 in production), build the SMTP emailer, mount routes (`checkout`, `portal`, `webhook`). Stripe webhooks are verified by signature and require a webhook secret; the service is not bound to loopback in production. `sales/license_signer.py` signs a license for each completed sale and emails it to the customer, who drops it into a standard license path (ADR-011). The sales signing key is the *license* key (it produces files `license/verifier.py` accepts).
+
+### Consequences
+
+- License issuance is automatic and tied to a verified Stripe webhook.
+- The sales service holds production signing power; its key must be protected as carefully as the operator's `tools.keygen` key.
+
+---
+
+## ADR-013: Signed Update Channel
+
+**Status:** Accepted
+**Date:** 2026-07-17
+
+### Context
+
+The product must be able to tell customers about updates without being forced to update, and a tampered/rotated manifest must not be installable.
+
+### Decision
+
+A separate Ed25519 *update* key (distinct from the license key, so a leaked update key cannot forge licenses) signs release manifests. The operator side is `tools.release`; the customer side is the `update/` package (`update/manifest.py` verify, `update/checker.py` fetch+verify+report). The manifest is hosted at a known URL (default: a file committed to the KirkForge-Bots GitHub repo). The cognition service's `/admin/update` endpoint and the `python -m update` CLI both go through `update.checker`: a single short-timeout HTTPS GET, never blocking; failures return a structured `UpdateCheck` with an `error` field. `update/keys.py` embeds the update public key.
+
+### Consequences
+
+- Customers get update notices; the update key is revocable/rotatable independently of the license key.
+- Network failures degrade to a clean "no update info" line, never a boot failure.
+
+---
+
+## ADR-014: Multi-Character System
+
+**Status:** Accepted
+**Date:** 2026-07-17
+
+### Context
+
+Packy V1.x was a single character. V2.0.0 ships multiple selectable characters with distinct persona, snark, state, and lore.
+
+### Decision
+
+`src/bot/character/randomizer.js` holds a `CHARACTERS` array; each character is a directory under `src/bot/character/` (`glitch/`, `kronos/`, `vernon/`, `sunjinwo/`, plus the default Packy) providing `prompt.js`, `snarkBank.js`, `state.js`. `randomizer.js` exports `selectRandomCharacter(seed)`, `selectCharacterByName(name)`, `getCurrentCharacter()`, `getCurrentState()`, `getCurrentPrompt()`, `listCharacters()`. The active character drives the system prompt, snark bank, and lorebook path; the bot logs the active personality at ready. The Python cognition layer (ADR-003) remains the intelligence; the character layer selects which persona the prompt encodes.
+
+### Consequences
+
+- Adding a character is a new directory + an entry in `CHARACTERS`; no core pipeline change.
+- Character-specific lore lives under `data/lorebook/` keyed by character `lorePath`.
+
+---
+
+## ADR-015: Radio (Voice Channel Playback)
+
+**Status:** Accepted
+**Date:** 2026-07-17
+
+### Context
+
+The bot joins a Discord voice channel and plays internet radio stations on command, as a community feature distinct from the text character pipeline.
+
+### Decision
+
+`src/bot/commands/handlers/radio.js` exposes five handlers — `handleRadioPlay`, `handleRadioStop`, `handleRadioStations`, `handleRadioNowPlaying`, `handleRadioVolume` — backed by `src/bot/radio/radioPlayer.js` (voice join/leave, playback, volume) and `src/bot/radio/radioStations.js` (station catalog: DR, Commercial, International). Slash commands are registered in `src/bot/commands/register.js`; the help embed (`core.js handleHelpCommand`) documents the `/radio` subcommands. Radio is independent of the cognition `/respond` path — it does not consume LLM tokens.
+
+### Consequences
+
+- Radio is a self-contained voice feature; failures are isolated from the character pipeline.
+- The station catalog grows by editing `radioStations.js`; no protocol change.

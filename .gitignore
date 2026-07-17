@@ -41,3 +41,4 @@ token_*.json
 *.pickle
 client_secret*.json
 credentials.json
+*.bak

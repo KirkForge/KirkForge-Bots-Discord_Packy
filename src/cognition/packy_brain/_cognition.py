@@ -1,4 +1,4 @@
-"""PackyCognitionMixin — think/interpret/plan + code-from-instruction.
+"""PackyCognitionMixin — thin wrapper around PackyCogEngine (stochastic composer).
 
 Extracted from packy_brain.py lines 692-768.
 """

@@ -1,30 +1,32 @@
 """
-packy_cog_engine.py — Packy v2.05 Cognitive Engine
---------------------------------------------------
+packy_cog_engine.py — Packy v2.06 Response Composer (stochastic style, not LLM reasoning)
+-----------------------------------------------------------------------------------------
 
-Packy’s synthetic reasoning module:
-He thinks like a grumpy old war-veteran engineer named "Ed Junior"
-who improvises solutions from experience, math, and trauma.
+Packy's lightweight response composer.
+It does NOT call a language model; it deterministically classifies intent, then
+stochastically fills a small set of hand-written templates with theme/tone
+snippets.  This gives Packy his grumpy veteran voice without shipping a fake
+"cognition" layer.
 
-This engine provides:
-- Lightweight pseudo-LLM reasoning
-- Task interpretation and decomposition
-- Code planning and structured synthesis
-- Memory-enriched responses
-- Personality-driven improvisation
-- Trauma-injected sarcasm
-- Lore-writing hooks
-- Migration-friendly cognitive "soul" structure
+Historical note: prior versions called this a "synthetic reasoning module" and
+implied it thinks.  It doesn't.  The LLM path lives on the JS side
+(src/bot/index.js direct mode) and in the Python microservice the brain
+eventually delegates to an adapter.  This file is now explicitly a style
+composer so callers are not misled.
 
-This module NEVER imports python_core or web UI.
-It is purely internal cognition for PackyBrain.
+Public functions:
+  - think(instruction)           → composed response text
+  - interpret(instruction)       → rule-based intent classifier
+  - plan(interpretation)         → response strategy selector
+  - create_lore_entry(text)      → templated lore entry
+  - reflect_on_memory(memories)  → templated memory commentary
 """
 
 from __future__ import annotations
 import random
 import textwrap
 
-# === Trauma & personality constants ===
+# === Theme & tone snippets ===
 
 PACKY_CORE_ETHOS = (
     "I am Packy (Ed Junior), a grumpy old war-veteran engineer who improvises "
@@ -60,7 +62,7 @@ PACKY_GRUMPY_TONE = [
     "You expect miracles from a machine held together by dust and spite...",
 ]
 
-# Short helper lines Packy uses to “think”
+# Short helper lines Packy uses to fill templates
 PACKY_INTERNAL_MONOLOGUE = [
     "Hmm... let's see what kind of mess this is.",
     "Alright, old man brain, don't fail me now.",
@@ -72,20 +74,21 @@ PACKY_INTERNAL_MONOLOGUE = [
 
 
 # =====================================================================
-#                 INTERNAL REASONING LAYER (Lightweight)
+#                 INTERNAL RESPONSE COMPOSER
 # =====================================================================
 
 class PackyCogEngine:
     """
-    Packy's synthetic cognition engine.
-    Behaves like a grumpy old veteran who improvises solutions
-    using experience, math, and trauma.
+    Packy's stochastic response composer.
+
+    This class does not perform LLM reasoning; it classifies intent with a
+    simple rule set and fills pre-written templates with random theme/tone
+    snippets to produce a character-consistent reply.
 
     Public functions:
       - think(instruction)
       - interpret(instruction)
       - plan(instruction)
-      - generate_code(instruction, language)
       - create_lore_entry(text)
       - reflect_on_memory(memories)
     """
@@ -94,28 +97,27 @@ class PackyCogEngine:
         self.brain = brain  # weak link to PackyBrain (optional but useful)
 
     # ------------------------------------------------------------
-    #  High Level Reasoning Interface
+    #  High Level Composer Interface
     # ------------------------------------------------------------
 
     def think(self, instruction: str) -> str:
         """
-        Full cognitive pipeline:
-        1. Interpret the question
-        2. Extract intention
-        3. Generate Packy-style reasoning
-        4. Produce a final answer
+        Compose a Packy-style reply:
+        1. Classify intent
+        2. Pick a response strategy
+        3. Fill the matching template
         """
         interpretation = self.interpret(instruction)
         plan = self.plan(interpretation)
-        return self._assemble_reasoning(interpretation, plan)
+        return self._assemble_response(interpretation, plan)
 
     # ------------------------------------------------------------
-    #  Step 1 — Instruction Interpretation
+    #  Step 1 — Intent Classification
     # ------------------------------------------------------------
 
     def interpret(self, instruction: str) -> dict:
         """
-        Extracts meaning, intent, tone, required output type.
+        Rule-based intent classifier for Packy replies.
         This is Packy's "what do you want from me?" step.
         """
 
@@ -156,12 +158,12 @@ class PackyCogEngine:
         return out
 
     # ------------------------------------------------------------
-    #  Step 2 — Planning
+    #  Step 2 — Strategy Selection
     # ------------------------------------------------------------
 
     def plan(self, interpretation: dict) -> dict:
         """
-        Produces an internal plan for how Packy will respond.
+        Select a response template/strategy from the classified intent.
         """
         intent = interpretation["intent"]
 
@@ -182,7 +184,7 @@ class PackyCogEngine:
 
     def _plan_code_task(self, interpretation: dict) -> dict:
         """
-        Given interpretation, build a structured plan for code generation.
+        Build a structured plan for the code-response template.
         """
         language = interpretation["language"]
 
@@ -208,40 +210,39 @@ class PackyCogEngine:
         }
 
     # ------------------------------------------------------------
-    #  Step 3 — Reasoning Assembly
+    #  Step 3 — Template Assembly
     # ------------------------------------------------------------
 
-    def _assemble_reasoning(self, interpretation: dict, plan: dict) -> str:
+    def _assemble_response(self, interpretation: dict, plan: dict) -> str:
         """
-        Turns interpretation + plan into Packy's internal reasoning text,
-        then returns final output (snark handled by PackyBrain).
+        Fill the chosen template with random theme/tone snippets.
         """
         strategy = plan["strategy"]
 
         if strategy == "codegen":
-            return self._reason_about_code(interpretation, plan)
+            return self._compose_code_reply(interpretation, plan)
 
         if strategy == "explain":
-            return self._reason_about_explanation(interpretation)
+            return self._compose_explanation_reply(interpretation)
 
         if strategy == "lore_entry":
             return self.create_lore_entry(interpretation["raw"])
 
         # fallback
-        return self._reason_general(interpretation["raw"])
+        return self._compose_general_reply(interpretation["raw"])
 
     # ------------------------------------------------------------
-    #  Reasoning paths
+    #  Template implementations
     # ------------------------------------------------------------
 
-    def _reason_general(self, text: str) -> str:
+    def _compose_general_reply(self, text: str) -> str:
         intro = random.choice(PACKY_GRUMPY_TONE)
         trauma = random.choice(PTSD_THEMES)
         internal = random.choice(PACKY_INTERNAL_MONOLOGUE)
 
         return f"{intro} You asked: '{text}'.\n{internal}\nThis reminds me of the {trauma}. But anyway — here's what I think:\n{text}"
 
-    def _reason_about_explanation(self, interpretation: dict) -> str:
+    def _compose_explanation_reply(self, interpretation: dict) -> str:
         topic = interpretation["raw"]
         trauma = random.choice(PTSD_THEMES)
         rant = random.choice(PACKY_GRUMPY_TONE)
@@ -264,12 +265,7 @@ class PackyCogEngine:
         That's engineering. The rest is marketing.
         """)
 
-    # ------------------------------------------------------------
-    #  CODE GENERATION REASONING (NOT SCRIPT GEN)
-    #  This is the "brain" layer before the actual script generators.
-    # ------------------------------------------------------------
-
-    def _reason_about_code(self, interpretation: dict, plan: dict) -> str:
+    def _compose_code_reply(self, interpretation: dict, plan: dict) -> str:
         lang = plan["language"]
         task = interpretation["raw"]
 

@@ -523,9 +523,9 @@ app.include_router(scheduler_router, prefix="/scheduler")
 @limiter.limit("10/minute")
 async def respond(request: RespondRequest, req: Request) -> RespondResponse:
     """
-    Process user text through full Packy pipeline:
+    Process user text through the Packy response pipeline:
     1. Resolve system state (CPU/temp -> mood/snark)
-    2. Use PackyCogEngine.think() for internal cognition reasoning
+    2. Use PackyCogEngine.think() for stochastic style composition (not LLM reasoning)
     3. Select relevant lore based on text, snark level, and mood
     4. Build metadata header and final prompt
     5. Return assembled prompt and state info

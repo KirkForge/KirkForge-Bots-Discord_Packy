@@ -57,9 +57,9 @@ class PackyCognitionMixin:
 
             header_snark_lines: List[str] = []
             try:
-                comment_snark_module = _try_import("packy_comment_snark")
-                if comment_snark_module and hasattr(comment_snark_module, "get_comment_snark_lines"):
-                    header_snark_lines = comment_snark_module.get_comment_snark_lines(3)
+                comment_snark_module = _try_import("packy_snark")
+                if comment_snark_module and hasattr(comment_snark_module, "get_snark_lines"):
+                    header_snark_lines = comment_snark_module.get_snark_lines(3)
             except Exception:
                 logger.debug("comment_snark lines not available; using fallback")
 

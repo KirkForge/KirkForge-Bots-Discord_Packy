@@ -1,4 +1,4 @@
-from packy_snark_engine import get_snark_lines
+from packy_snark import get_snark_lines
 from datetime import datetime
 
 def generate_python_script(task_description, function_name="run"):

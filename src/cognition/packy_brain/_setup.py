@@ -42,7 +42,7 @@ def _try_import(module_name: str):
 
 
 _snark_modules = {
-    "snark_engine": _try_import("packy_snark_engine"),
+    "snark_engine": _try_import("packy_snark"),
     "snark": _try_import("packy_snark"),
     "teaching": _try_import("generators.packy_teaching"),
     "lore_writer": _try_import("packy_lore_writer"),

@@ -1,6 +1,6 @@
 import random
 from datetime import datetime
-from packy_snark_engine import get_snark_lines
+from packy_snark import get_snark_lines
 
 def generate_python_script(task_description, function_name="run"):
     timestamp = datetime.utcnow().isoformat() + "Z"

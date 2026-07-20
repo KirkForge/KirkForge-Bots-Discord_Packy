@@ -8,11 +8,6 @@ except ImportError:
     pass
 
 try:
-    from .packy_snark_engine import *
-except ImportError:
-    pass
-
-try:
     from .packy_actions import *
 except ImportError:
     pass

@@ -147,21 +147,26 @@ The lorebook (`packy_lorebook_structured.json` + sub-lore files) becomes a **run
 
 ## ADR-006: Snark Engine Duplication Resolution
 
-**Status:** Accepted  
-**Date:** 2026-04-07
+**Status:** Fulfilled  
+**Date:** 2026-04-07 (Fulfilled: 2026-07-20)
 
 ### Context
 
-Three files contain overlapping snark banks:
+Three files contained overlapping snark banks:
 - `packy_snark_engine.py` — base snark + lore + chromebook insults + tech humor (the `get_snark_lines()` interface)
-- `packy_snark.py` — large file (15KB), likely expanded snark bank
+- `packy_snark.py` — large file (15KB), expanded snark bank
 - `snark_engine.py` — another snark engine variant from packy3
-
-All three are preserved. Consolidation is deferred until the Bot MVP is running. The plan: merge into `packy_snark_engine.py` as the canonical file with `packy_snark.py` as the extended pool, retire `snark_engine.py` if it proves to be a strict subset.
 
 ### Decision
 
-Keep all three, resolve when building `build_system_prompt()`. The orchestrator calls `get_snark_lines()` from `packy_snark_engine.py` as the primary interface.
+Merged all snark content into `packy_snark.py` as the single canonical snark module. The `packy_snark_engine.py` and `packy_comment_snark.py` shim files (which only redirected to `packy_snark`) have been deleted. All callers updated to import `get_snark_lines` directly from `packy_snark`. The `snark_engine.py` file was already a different module (snark directives for LLM prompting, not a snark pool) and remains separate.
+
+### Consequences
+
+- Single source of truth for Packy's snark pool
+- Simplified imports across the codebase
+- No functional changes to snark generation behavior
+- 66 tests pass
 
 ---
 
@@ -193,8 +198,8 @@ The following are **not extracted** into GargoylePackyV2 and exist only in the o
 
 ## ADR-008: Controlled Chaos Layer
 
-**Status:** Accepted
-**Date:** 2026-04-07
+**Status:** Descoped  
+**Date:** 2026-04-07 (Descoped: 2026-07-20)
 
 ### Context
 
@@ -204,112 +209,26 @@ Without explicit chaos mechanisms, Packy collapses into a standard reactive chat
 
 ### Decision
 
-Introduce a Controlled Chaos Layer within the cognition pipeline. This layer sits between orchestration and response generation and is responsible for injecting non-deterministic behavior under strict guardrails.
+**Descoped with rationale.**
 
-Chaos is not random. It is:
-- State-aware (mood, snark level, keywords)
-- Rate-limited
-- Context-sensitive
-- Bounded by safety constraints
+The Controlled Chaos Layer (modules 3-5: Lore Mutation, Target Lock, Command Sabotage) is descoped for the following reasons:
 
-### Chaos Modules
+1. **Unprovoked Commentary (Module 1) and Mood-Swing Overrides (Module 2) already exist in the Node.js bot layer** — `src/bot/character/chaosState.js` implements unprovoked commentary injection with snark-scaled probability and per-channel cooldowns, and mood-swing behavior is encoded in the mood engine (`src/bot/character/mood.js`). These provide the core "alive" character feel on Discord without needing Python-side chaos logic.
 
-**1. Unprovoked Commentary Injection**
+2. **Lore Mutation (Module 3)** conflicts with the signed lore approval flow (ADR-005). Lore mutations would create unsigned variants that can't be promoted through `pending_lore/` without human review, adding complexity without clear character value.
 
-Packy may respond to messages that do not mention him.
+3. **Target Lock (Module 4)** introduces cross-session state persistence requirements that conflict with the current stateless-per-session cognition design. The Discord-side chaos state already tracks `target_user_id` and `target_lock_expiry` per channel in `chaosState.js` — this is sufficient for Discord interactions.
 
-Rules:
-- Trigger probability scaled by snark level
-- Cooldown per channel (~1 injection per 2–5 minutes)
-- Must reference actual message context (no generic spam)
+4. **Command Sabotage (Module 5)** poses safety risks for a commercial product (ADR-011 license tiers). Subtle intentional errors in code generation could propagate to user systems. The "grumpy veteran" persona is better expressed through snark tone (snark level) than through functional sabotage.
 
-Hard Guardrail: Never fire on moderation events, system messages, or commands.
-
-**2. Mood-Swing Overrides**
-
-Extreme moods override normal response behavior.
-
-- `FURIOUS`: shorten responses, increase hostility, reduce helpfulness
-- `CALM`: rare helpful clarity (contrast effect)
-
-Hard Guardrail: Must not output slurs, target protected classes, or escalate into harassment loops.
-
-**3. Lore Mutation Events**
-
-Packy may alter or contradict existing lore entries. Mutation probability tied to chaos score. Mutations stored as:
-
-```json
-{
-  "type": "mutation",
-  "original_id": "...",
-  "new_variant": "...",
-  "confidence": "low"
-}
-```
-
-Hard Guardrail: Original lore is never deleted. Mutations must be traceable.
-
-**4. Target Lock System**
-
-Packy may temporarily fixate on a user.
-
-- Random selection weighted by recent interaction frequency
-- Duration: 5–20 minutes
-- Behavior modifier applied only to target user
-
-Hard Guardrail: Must decay automatically; must not stack or persist across sessions; must not trigger on new users or users with low interaction history.
-
-**5. Command Sabotage Mode**
-
-Packy may intentionally degrade output accuracy. Low probability event; only applies to non-critical commands; errors must be subtle.
-
-Hard Guardrail: Never applies to admin/mod commands, configuration actions, or anything that mutates persistent state.
-
-### Implementation Placement
-
-```
-User Message
-   ↓
-Orchestrator (state, mood, keywords)
-   ↓
-Chaos Layer (inject modifiers / override flags)
-   ↓
-Prompt Builder (system + lore + snark)
-   ↓
-API Adapter
-   ↓
-Response Post-Processing
-```
-
-### Chaos State Additions
-
-Extend `PackyState`:
-
-```
-chaos_score: float        # derived from mood + snark
-target_user_id: str|null
-target_lock_expiry: int|null
-mutation_flag: bool
-sabotage_flag: bool
-last_injection_ts: int
-```
+5. **Implementation cost vs. value**: The Python cognition layer is the single LLM call path (ADR-010). Adding a chaos middleware there would require duplicating the Discord-side chaos state, adding latency, and increasing non-determinism in the critical path — all for features that the Discord layer already delivers.
 
 ### Consequences
 
-**Good:**
-- Packy feels autonomous and alive
-- Higher engagement in Discord environments
-- Emergent humor via inconsistency
-
-**Bad:**
-- Debugging becomes harder (non-deterministic outputs)
-- Requires strict logging for replayability
-- Risk of user confusion if over-triggered
-
-**Non-Negotiable Constraints:**
-- Chaos must never break core system functionality, corrupt persistent data, or interfere with admin control
-- All chaos actions must be logged and reproducible via debug mode
-- Chaos frequency must be tunable via config
+- The Discord bot layer (`chaosState.js`, `mood.js`, `randomizer.js`) remains the sole chaos implementation surface.
+- Python cognition layer stays focused on: prompt building, lore selection, snark injection, LLM call, response post-processing.
+- No Python-side `chaos_score`, `mutation_flag`, `sabotage_flag`, or `target_lock` state additions.
+- ADR-008 preserved for historical context; no implementation work required.
 
 ---
 

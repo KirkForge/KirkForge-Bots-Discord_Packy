@@ -13,6 +13,7 @@ from packy_mood_engine import resolve_packy_state
 # from packy_war_engine import pick_war_story  # optional module (not required for basic orchestration)
 # from packy_llm import call_packy_llm         # your inference wrapper (caller should provide LLM function)
 
+
 def build_metadata(cpu_pct, temp_c, mode="RESPOND", force_war=None):
     """Build Packy orchestrator metadata header.
 
@@ -45,6 +46,7 @@ def build_metadata(cpu_pct, temp_c, mode="RESPOND", force_war=None):
 
     return header, state, war
 
+
 def assemble_prompt(metadata, user_text):
     """Assemble a one-shot prompt from metadata and user input.
 
@@ -55,7 +57,8 @@ def assemble_prompt(metadata, user_text):
     Returns:
         Complete prompt string
     """
-    return f"{metadata}\nUser: \"{user_text}\"\nPacky:"
+    return f'{metadata}\nUser: "{user_text}"\nPacky:'
+
 
 def process_response(raw_output, mode, war=None):
     """Post-process LLM raw output based on mode.
@@ -83,6 +86,7 @@ def process_response(raw_output, mode, war=None):
         return raw_output
 
     return raw_output
+
 
 def orchestrate(user_text, cpu_pct, temp_c, llm_func, mode="RESPOND", force_war=None):
     """Orchestrate a complete Packy response.
@@ -115,8 +119,9 @@ def orchestrate(user_text, cpu_pct, temp_c, llm_func, mode="RESPOND", force_war=
         "result": final,
         "state": state,
         "war_story_used": war,
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.utcnow().isoformat(),
     }
+
 
 # Memoir helper
 def generate_memoir_entry(cpu_pct, temp_c, llm_func):
@@ -137,6 +142,6 @@ def generate_memoir_entry(cpu_pct, temp_c, llm_func):
         "cpu": out["state"]["cpu_pct"],
         "temp": out["state"]["weather"],
         "mood": out["state"]["mood"],
-        "text": out["result"]
+        "text": out["result"],
     }
     return entry

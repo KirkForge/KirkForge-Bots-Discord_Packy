@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import logging
 
-from ._setup import _default_generate_script, logger
+from ._setup import _default_generate_script
 
 logger = logging.getLogger("packy.brain.scripts")
 

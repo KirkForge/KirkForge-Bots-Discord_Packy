@@ -21,6 +21,7 @@ DEFAULT_PATH = DATA_DIR / "llm_quota.json"
 
 class QuotaExceeded(Exception):
     """Raised when the daily or per-minute rate limit is exceeded."""
+
     pass
 
 
@@ -75,7 +76,7 @@ class QuotaStore:
 
     @staticmethod
     def _today_key(now: datetime.datetime | None = None) -> str:
-        now = now or datetime.datetime.utcnow()
+        now = now or datetime.datetime.now(datetime.timezone.utc)
         return now.strftime("%Y-%m-%d")
 
     def get_today_usage(self) -> int:
@@ -116,31 +117,25 @@ class QuotaStore:
                 "reason": "Daily quota exceeded",
                 "allowed_daily": self.daily_limit,
                 "used_today": used,
-                "cost_estimate_usd": round(
-                    (used / 1_000_000.0) * self.cost_per_million, 9
-                ),
+                "cost_estimate_usd": round((used / 1_000_000.0) * self.cost_per_million, 9),
             }
 
         new = self._increment_today(tokens)
         return True, {
             "allowed_daily": self.daily_limit,
             "used_today": new,
-            "cost_estimate_usd": round(
-                (new / 1_000_000.0) * self.cost_per_million, 9
-            ),
+            "cost_estimate_usd": round((new / 1_000_000.0) * self.cost_per_million, 9),
         }
 
     def usage_info(self) -> Dict[str, Any]:
         used = self.get_today_usage()
-        now = datetime.datetime.utcnow()
+        now = datetime.datetime.now(datetime.timezone.utc)
         tomorrow = now + datetime.timedelta(days=1)
         reset = datetime.datetime(tomorrow.year, tomorrow.month, tomorrow.day)
 
         return {
             "allowed_daily": self.daily_limit,
             "used_today": used,
-            "cost_estimate_usd": round(
-                (used / 1_000_000.0) * self.cost_per_million, 9
-            ),
+            "cost_estimate_usd": round((used / 1_000_000.0) * self.cost_per_million, 9),
             "resets_at_utc": reset.isoformat() + "Z",
         }

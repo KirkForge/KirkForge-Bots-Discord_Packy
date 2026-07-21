@@ -38,20 +38,16 @@ No TypeScript. No class syntax unless the Python uses classes.
 
 ## PROMPT 2 — Consolidate Snark Banks to JavaScript
 **Model:** MiniMax 2.7 (needs full context of 3 large files)  
-**Output:** `src/bot/character/snarkBank.js`
+**Output:** `src/bot/character/snarkBank.js`  
+**Status:** DONE — snark consolidation completed (ADR-006 Fulfilled). All snark data
+now lives in `src/cognition/packy_snark.py`. This prompt is retained for reference only.
 
 ```
-You are porting and consolidating three Python snark data files into one JavaScript module
+You are porting and consolidating snark data from packy_snark.py into one JavaScript module
 for a Discord bot character named Packy (a grumpy old laptop AI).
-
---- packy_snark_engine.py ---
-[PASTE src/cognition/packy_snark_engine.py]
 
 --- packy_snark.py ---
 [PASTE src/cognition/packy_snark.py]
-
---- packy_comment_snark.py ---
-[PASTE src/cognition/packy_comment_snark.py]
 
 Merge all arrays into a single structured ES module: snarkBank.js
 
@@ -61,7 +57,7 @@ export const snarkBank = {
   lore: [...],        // from PACKY_LORE_SNARK  
   chromebook: [...],  // from PACKY_CHROMEBOOK_INSULTS
   tech_humor: [...],  // from PACKY_TECH_HUMOR
-  code_comments: [...] // from packy_comment_snark.py
+  code_comments: [...] // from PACKY_CODE_COMMENT_SNARK
 }
 
 export function getSnarkLines(category = 'base', n = 3) {

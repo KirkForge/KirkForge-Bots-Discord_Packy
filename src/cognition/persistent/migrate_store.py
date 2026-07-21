@@ -20,7 +20,6 @@ import os
 import sys
 from pathlib import Path
 from datetime import datetime, timezone
-import sqlite3
 import shutil
 
 # Use the unified store implementation
@@ -37,6 +36,7 @@ logger = logging.getLogger("persistent.migrate_store")
 if not logger.handlers:
     logging.basicConfig(level=logging.INFO)
 
+
 def _backup(path: Path):
     if not path.exists():
         return None
@@ -49,6 +49,7 @@ def _backup(path: Path):
     except Exception:
         logger.exception("Backup failed for %s", path)
         return None
+
 
 def run_migration(db_path: str, json_path: str):
     dbp = Path(db_path)
@@ -65,7 +66,7 @@ def run_migration(db_path: str, json_path: str):
 
     # Initialize store (creates DB and schema if missing)
     try:
-        store = store_init(db_path=db_path, json_path=json_path)
+        store_init(db_path=db_path, json_path=json_path)
         logger.info("Store initialized at db=%s json=%s", db_path, json_path)
     except Exception as e:
         logger.exception("Failed to initialize unified store: %s", e)
@@ -91,16 +92,20 @@ def run_migration(db_path: str, json_path: str):
 
     logger.info("Migration completed. Please restart backend to pick up changes.")
 
+
 def main():
     _data_dir = Path(__file__).resolve().parent.parent.parent.parent / "data"
     _default_db = os.getenv("PACKY_MEMORY_DB", str(_data_dir / "packy_memory.db"))
     _default_json = os.getenv("PACKY_MEMORY_JSON", str(_data_dir / "packy_memory.json"))
-    parser = argparse.ArgumentParser(description="Migrate persistent JSON memory exports into unified SQLite store.")
+    parser = argparse.ArgumentParser(
+        description="Migrate persistent JSON memory exports into unified SQLite store."
+    )
     parser.add_argument("--db", default=_default_db, help="Target DB path")
     parser.add_argument("--json", default=_default_json, help="Source JSON export path")
     args = parser.parse_args()
 
     run_migration(db_path=args.db, json_path=args.json)
+
 
 if __name__ == "__main__":
     main()

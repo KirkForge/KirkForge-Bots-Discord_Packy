@@ -15,7 +15,6 @@ the internet), so we DON'T bind to loopback by default in production
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 
 from fastapi import FastAPI
 
@@ -42,13 +41,17 @@ def create_app(
     cfg = config or load_config()
     license_db = db or LicenseDB(cfg.db_path)
     license_signer = signer or LicenseSigner(cfg.license_private_key_path)
-    mailer = emailer if emailer is not None else SMTPEmailer(
-        host=cfg.smtp_host,
-        port=cfg.smtp_port,
-        user=cfg.smtp_user,
-        password=cfg.smtp_password,
-        from_addr=cfg.smtp_from,
-        use_tls=cfg.smtp_use_tls,
+    mailer = (
+        emailer
+        if emailer is not None
+        else SMTPEmailer(
+            host=cfg.smtp_host,
+            port=cfg.smtp_port,
+            user=cfg.smtp_user,
+            password=cfg.smtp_password,
+            from_addr=cfg.smtp_from,
+            use_tls=cfg.smtp_use_tls,
+        )
     )
 
     app = FastAPI(

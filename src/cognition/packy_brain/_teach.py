@@ -9,8 +9,6 @@ import logging
 import random
 from typing import List
 
-from ._setup import logger
-
 logger = logging.getLogger("packy.brain.teach")
 
 
@@ -28,7 +26,9 @@ class PackyTeachMixin:
                 if topic.lower() in cat:
                     snippets.extend(lines)
             if not snippets:
-                snippets = self.structured_lore.get("categories", {}).get("programming_snark", [])[:5]
+                snippets = self.structured_lore.get("categories", {}).get("programming_snark", [])[
+                    :5
+                ]
         else:
             snippets = self.static_lore_raw[:5]
 

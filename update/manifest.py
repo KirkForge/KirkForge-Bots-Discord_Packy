@@ -25,10 +25,8 @@ from __future__ import annotations
 import base64
 import json
 import logging
-from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
@@ -83,6 +81,7 @@ class Manifest:
 
 # --- Signing (operator side) ---------------------------------------------
 
+
 def sign_manifest(
     manifest: Manifest,
     private_key,
@@ -97,12 +96,11 @@ def sign_manifest(
     d.pop("signature", None)
     payload = json.dumps(d, separators=(",", ":"), sort_keys=True).encode("utf-8")
     sig = private_key.sign(payload)
-    return Manifest(
-        **{**d, "signature": base64.b64encode(sig).decode("ascii")}
-    )
+    return Manifest(**{**d, "signature": base64.b64encode(sig).decode("ascii")})
 
 
 # --- Verification (customer side) ---------------------------------------
+
 
 class ManifestVerificationError(Exception):
     """Raised when a manifest cannot be trusted.
@@ -118,7 +116,9 @@ def verify_manifest(manifest: Manifest, *, public_key=None) -> None:
     The `public_key` argument is for tests; production uses the
     embedded `update.keys.UPDATE_PUBLIC_KEY_RAW`.
     """
-    pk_raw = bytes(public_key.public_bytes_raw() if public_key is not None else _keys.UPDATE_PUBLIC_KEY_RAW)
+    pk_raw = bytes(
+        public_key.public_bytes_raw() if public_key is not None else _keys.UPDATE_PUBLIC_KEY_RAW
+    )
     if not pk_raw or pk_raw == bytes(32):
         raise ManifestVerificationError(
             "update public key is unset (still the placeholder); refuse to verify"
@@ -153,14 +153,14 @@ def fetch_manifest(url: str = DEFAULT_MANIFEST_URL, *, timeout: float = TIMEOUT_
     """Fetch the raw manifest JSON. Raises on network failure."""
     import urllib.error
     import urllib.request
+
     req = urllib.request.Request(
-        url, headers={"User-Agent": USER_AGENT, "Accept": "application/json"},
+        url,
+        headers={"User-Agent": USER_AGENT, "Accept": "application/json"},
     )
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         if resp.status != 200:
-            raise ManifestVerificationError(
-                f"manifest fetch returned HTTP {resp.status}"
-            )
+            raise ManifestVerificationError(f"manifest fetch returned HTTP {resp.status}")
         return resp.read().decode("utf-8")
 
 

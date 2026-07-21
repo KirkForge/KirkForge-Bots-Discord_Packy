@@ -11,21 +11,17 @@ from __future__ import annotations
 import json
 import logging
 import re
-from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from ._setup import (
     CORE_DIR,
-    PERSISTENT_DIR,
     ROOT_DIR,
     PackyCogEngine,
-    _default_get_snark_lines,
     _memory_adapter_module,
     _packy_memory_module,
     _persist_module,
     _persona_module,
     _snark_modules,
-    logger,
 )
 
 logger = logging.getLogger("packy.brain.init")
@@ -148,7 +144,12 @@ class PackyInitMixin:
 
         if not loaded:
             logger.warning("No lorebook JSON found; using minimal structured fallback")
-            self.structured_lore = {"categories": {}, "triggers": {}, "meta_hidden": [], "stats": {}}
+            self.structured_lore = {
+                "categories": {},
+                "triggers": {},
+                "meta_hidden": [],
+                "stats": {},
+            }
             self.lore_loaded_from_structured = False
 
         if self.lore_loaded_from_structured:
@@ -167,11 +168,13 @@ class PackyInitMixin:
                     "categories": {"misc_packyisms": self.static_lore_raw},
                     "triggers": {},
                     "meta_hidden": [],
-                    "stats": {"total_entries": len(self.static_lore_raw)}
+                    "stats": {"total_entries": len(self.static_lore_raw)},
                 }
                 self.trigger_map = {}
                 self.category_counts = {"misc_packyisms": len(self.static_lore_raw)}
-                logger.info("Fallback lore loaded with %d legacy entries", len(self.static_lore_raw))
+                logger.info(
+                    "Fallback lore loaded with %d legacy entries", len(self.static_lore_raw)
+                )
 
         self._init_profanity_map()
 

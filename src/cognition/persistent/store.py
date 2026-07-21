@@ -71,13 +71,16 @@ CREATE TABLE IF NOT EXISTS meta (
 );
 """
 
+
 def _now_iso():
     return datetime.now(tz=timezone.utc).isoformat() + "Z"
+
 
 def _ensure_dir_for(path: str):
     d = os.path.dirname(path)
     if d and not os.path.exists(d):
         os.makedirs(d, exist_ok=True)
+
 
 def _hash_event(e: Dict[str, Any]) -> str:
     # Deterministic fingerprint used for simple deduplication
@@ -86,6 +89,7 @@ def _hash_event(e: Dict[str, Any]) -> str:
     except Exception:
         j = str(e)
     return hashlib.sha256(j.encode("utf-8")).hexdigest()
+
 
 class Store:
     """
@@ -155,7 +159,9 @@ class Store:
         # If DB was newly created and a JSON export exists, import it
         if created and os.path.exists(self.json_path):
             try:
-                logger.info("Detected existing JSON memory export; importing into DB: %s", self.json_path)
+                logger.info(
+                    "Detected existing JSON memory export; importing into DB: %s", self.json_path
+                )
                 self._import_json_to_db()
             except Exception:
                 logger.exception("JSON import to DB failed (non-fatal)")
@@ -212,7 +218,10 @@ class Store:
                     ts = m.get("ts") or _now_iso()
                     text = m.get("text") or m.get("title") or ""
                     tags = m.get("tags") or m.get("tags", [])
-                    cur.execute("INSERT INTO memories (ts, text, tags) VALUES (?,?,?)", (ts, text, json.dumps(tags)))
+                    cur.execute(
+                        "INSERT INTO memories (ts, text, tags) VALUES (?,?,?)",
+                        (ts, text, json.dumps(tags)),
+                    )
                 except Exception:
                     logger.exception("Skipping memory import row due to error")
             for e in evs:
@@ -222,20 +231,28 @@ class Store:
                     payload = json.dumps(e)
                     fp = _hash_event(e)
                     try:
-                        cur.execute("INSERT OR IGNORE INTO events (ts, type, payload, fingerprint) VALUES (?,?,?,?)", (ts, t, payload, fp))
+                        cur.execute(
+                            "INSERT OR IGNORE INTO events (ts, type, payload, fingerprint) VALUES (?,?,?,?)",
+                            (ts, t, payload, fp),
+                        )
                     except Exception:
                         logger.exception("failed to insert event row; skipping")
                 except Exception:
                     logger.exception("Skipping event import row due to error")
-            for l in lore_items:
+            for item in lore_items:
                 try:
-                    key = l.get("key") if isinstance(l, dict) else None
-                    data_blob = json.dumps(l)
+                    key = item.get("key") if isinstance(item, dict) else None
+                    data_blob = json.dumps(item)
                     cur.execute("INSERT INTO lore (key, data) VALUES (?,?)", (key, data_blob))
                 except Exception:
                     logger.exception("Skipping lore import row due to error")
             conn.commit()
-            logger.info("Imported JSON export into DB (counts: memories=%d, events=%d, lore=%d)", len(mems), len(evs), len(lore_items))
+            logger.info(
+                "Imported JSON export into DB (counts: memories=%d, events=%d, lore=%d)",
+                len(mems),
+                len(evs),
+                len(lore_items),
+            )
         finally:
             conn.close()
 
@@ -249,7 +266,9 @@ class Store:
         conn = self._conn()
         try:
             cur = conn.cursor()
-            cur.execute("INSERT INTO memories (ts, text, tags) VALUES (?,?,?)", (ts, text, json.dumps(tags)))
+            cur.execute(
+                "INSERT INTO memories (ts, text, tags) VALUES (?,?,?)", (ts, text, json.dumps(tags))
+            )
             conn.commit()
             return {"ts": ts, "text": text, "tags": tags}
         finally:
@@ -283,7 +302,10 @@ class Store:
         try:
             cur = conn.cursor()
             try:
-                cur.execute("INSERT OR IGNORE INTO events (ts, type, payload, fingerprint) VALUES (?,?,?,?)", (ts, t, payload, fp))
+                cur.execute(
+                    "INSERT OR IGNORE INTO events (ts, type, payload, fingerprint) VALUES (?,?,?,?)",
+                    (ts, t, payload, fp),
+                )
                 conn.commit()
             except sqlite3.IntegrityError:
                 # duplicate fingerprint -> ignore
@@ -343,9 +365,11 @@ class Store:
         finally:
             conn.close()
 
+
 # Module-level convenience
 def init(db_path: Optional[str] = None, json_path: Optional[str] = None) -> Store:
     return Store.init(db_path=db_path, json_path=json_path)
+
 
 def get_store() -> Store:
     return Store.get()

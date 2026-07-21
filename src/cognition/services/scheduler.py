@@ -112,6 +112,7 @@ class Scheduler:
                 job["func"](*job.get("args", ()), **job.get("kwargs", {}))
             except Exception as exc:
                 import logging
+
                 logging.getLogger("scheduler").exception("Job %s raised %s", jid, exc)
             finally:
                 with self._lock:

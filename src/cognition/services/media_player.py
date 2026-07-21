@@ -27,7 +27,7 @@ def _run(cmd: list[str], blocking: bool = False) -> bool:
         else:
             subprocess.Popen(cmd)
         return True
-    except Exception as e:
+    except Exception:
         logger.exception("Command failed: %s", cmd)
         return False
 
@@ -49,6 +49,7 @@ def speak_text(text: str, blocking: bool = False) -> bool:
     """Speak text using the TTS engine."""
     try:
         from . import tts_engine
+
         return tts_engine.speak(text, blocking)
     except Exception as e:
         logger.exception("speak_text failed: %s", e)

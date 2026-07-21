@@ -77,6 +77,7 @@ PACKY_INTERNAL_MONOLOGUE = [
 #                 INTERNAL RESPONSE COMPOSER
 # =====================================================================
 
+
 class PackyCogEngine:
     """
     Packy's stochastic response composer.
@@ -334,7 +335,7 @@ class PackyCogEngine:
 
         return textwrap.dedent(f"""
         Let me think about something from my past...
-        I remember this: "{memory.get('text','[unknown memory]')}"
+        I remember this: "{memory.get("text", "[unknown memory]")}"
         And honestly, it reminds me of the {trauma}.
         """)
 

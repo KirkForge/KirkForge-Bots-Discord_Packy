@@ -8,8 +8,6 @@ from __future__ import annotations
 import logging
 from typing import List, Tuple
 
-from ._setup import logger
-
 logger = logging.getLogger("packy.brain.triggers")
 
 
@@ -31,7 +29,7 @@ class PackyTriggersMixin:
         if not matches and "categories" in self.structured_lore:
             for cat in self.structured_lore.get("categories", {}).keys():
                 try:
-                    for kw in (cat.split("_") if "_" in cat else [cat]):
+                    for kw in cat.split("_") if "_" in cat else [cat]:
                         if kw and kw.lower() in low:
                             matches[cat] = matches.get(cat, 0) + 1
                 except Exception:

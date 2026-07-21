@@ -131,7 +131,7 @@ src/
     packy_cog_engine.py   — Interpret → Plan → Reason pipeline
     packy_persona.py      — Core identity
     packy_mood_engine.py  — CPU/weather mood matrix
-    packy_snark*.py       — Snark banks
+    packy_snark.py               — snark banks (consolidated, ADR-006)
     packy_war_header.py   — War story header generator
     layer/                — Orchestration layer (state, signals, mood, keywords)
     generators/           — Script generators (bash, python, powershell)
@@ -166,19 +166,24 @@ docs/
 
 - Lore expansion beyond the current 20 new entries — use `docs/MINIMAX_PROMPTS.md` Prompt 3 to generate more
 - Web admin panel (deferred — see ADR-002)
-- Snark consolidation on the Python side — three snark files (`packy_snark_engine.py`, `packy_snark.py`, `packy_comment_snark.py`) are merged on the JS side but still separate in Python (post-MVP)
+- Snark consolidation on the Python side — consolidated into `packy_snark.py` (ADR-006 Fulfilled)
 
 ---
 
 ## Running Tests
 
 ```bash
-# Python cognition layer
-python test/test_cognition.py
+# Python cognition layer (all Python tests)
+PYTHONPATH=. python3 -m pytest -q
 
-# API endpoint (requires service running on :8765)
-node test/test_endpoint.js
+# Node.js smoke tests
+npm test
 
-# Adapters (no API keys needed, uses mocks)
-node test/test_adapters.js
+# Node.js all tests (smoke + integration)
+npm run test:all
+
+# Lint
+npm run lint          # ESLint
+ruff check .          # Python lint
+ruff format --check . # Python format
 ```

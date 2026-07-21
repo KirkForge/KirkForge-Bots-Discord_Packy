@@ -1,6 +1,7 @@
 from packy_snark import get_snark_lines
 from datetime import datetime
 
+
 def generate_bash_script(task_description):
     timestamp = datetime.utcnow().isoformat() + "Z"
     snark = get_snark_lines(3)
@@ -19,4 +20,3 @@ echo "Running task: {task_description}"
 
 # (Insert your poorly written commands below)
 """
-

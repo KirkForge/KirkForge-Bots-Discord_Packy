@@ -22,7 +22,7 @@ from collections import defaultdict
 from pathlib import Path
 
 from fastapi import APIRouter, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse, Response
+from fastapi.responses import HTMLResponse, Response
 from fastapi.templating import Jinja2Templates
 
 from sales.db import LicenseDB
@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 
 
 # --- Rate limiter ---------------------------------------------------------
+
 
 class _RateLimiter:
     """In-memory token bucket per (ip, route).
@@ -66,11 +67,11 @@ _RATE = _RateLimiter()
 # --- HTML templates -------------------------------------------------------
 
 _TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
-from fastapi.templating import Jinja2Templates  # noqa: E402
 TEMPLATES = Jinja2Templates(directory=str(_TEMPLATES_DIR))
 
 
 # --- Mount ----------------------------------------------------------------
+
 
 def mount(app, *, db: LicenseDB) -> None:
     router = APIRouter()
@@ -93,8 +94,11 @@ def mount(app, *, db: LicenseDB) -> None:
         if not _RATE.check(f"portal:{client_ip}"):
             return TEMPLATES.TemplateResponse(
                 "portal_login.html",
-                {"request": request, "license_id": license_id,
-                 "error": "Too many attempts. Try again in 15 minutes."},
+                {
+                    "request": request,
+                    "license_id": license_id,
+                    "error": "Too many attempts. Try again in 15 minutes.",
+                },
                 status_code=429,
             )
         license_id = license_id.strip()
@@ -102,8 +106,11 @@ def mount(app, *, db: LicenseDB) -> None:
         if not license_id or not email:
             return TEMPLATES.TemplateResponse(
                 "portal_login.html",
-                {"request": request, "license_id": license_id,
-                 "error": "Both fields are required."},
+                {
+                    "request": request,
+                    "license_id": license_id,
+                    "error": "Both fields are required.",
+                },
                 status_code=400,
             )
 
@@ -115,8 +122,11 @@ def mount(app, *, db: LicenseDB) -> None:
             hmac.compare_digest(email, "")
             return TEMPLATES.TemplateResponse(
                 "portal_login.html",
-                {"request": request, "license_id": license_id,
-                 "error": "License not found, or email does not match."},
+                {
+                    "request": request,
+                    "license_id": license_id,
+                    "error": "License not found, or email does not match.",
+                },
                 status_code=404,
             )
         # We treat the email check as the secret: if it matches, the
@@ -125,8 +135,11 @@ def mount(app, *, db: LicenseDB) -> None:
         if not hmac.compare_digest(email, row.customer_email.lower()):
             return TEMPLATES.TemplateResponse(
                 "portal_login.html",
-                {"request": request, "license_id": license_id,
-                 "error": "License not found, or email does not match."},
+                {
+                    "request": request,
+                    "license_id": license_id,
+                    "error": "License not found, or email does not match.",
+                },
                 status_code=404,
             )
 

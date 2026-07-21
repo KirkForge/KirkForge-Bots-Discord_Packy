@@ -73,8 +73,12 @@ logger = logging.getLogger("tools.keygen")
 DEFAULT_PRODUCT = "gargoyle-packy"
 DEFAULT_PRODUCT_VERSION = "2.0.0"
 
-DEFAULT_PRIVATE_KEY_PATH = Path.home() / ".local" / "share" / "kirkforge" / "packy" / "private_key.pem"
-DEFAULT_UPDATE_KEY_PATH = Path.home() / ".local" / "share" / "kirkforge" / "packy" / "private_key.update.pem"
+DEFAULT_PRIVATE_KEY_PATH = (
+    Path.home() / ".local" / "share" / "kirkforge" / "packy" / "private_key.pem"
+)
+DEFAULT_UPDATE_KEY_PATH = (
+    Path.home() / ".local" / "share" / "kirkforge" / "packy" / "private_key.update.pem"
+)
 DEFAULT_KEY_MODE = 0o600
 
 
@@ -104,12 +108,11 @@ def _load_or_create_keypair(path: Path) -> Keypair:
     if path.exists():
         logger.info("loading existing private key from %s", path)
         key = serialization.load_pem_private_key(
-            path.read_bytes(), password=None,
+            path.read_bytes(),
+            password=None,
         )
         if not isinstance(key, Ed25519PrivateKey):
-            raise SystemExit(
-                f"private key at {path} is not an Ed25519 key"
-            )
+            raise SystemExit(f"private key at {path} is not an Ed25519 key")
         return Keypair(private_key=key, public_key=key.public_key())
 
     # First-time init: refuse to write to an existing directory without a key
@@ -151,9 +154,7 @@ def sign_license(
     features (rare — usually tier-driven).
     """
     if tier not in feat_mod.ALL_TIERS:
-        raise SystemExit(
-            f"unknown tier '{tier}'. Valid: {', '.join(feat_mod.ALL_TIERS)}"
-        )
+        raise SystemExit(f"unknown tier '{tier}'. Valid: {', '.join(feat_mod.ALL_TIERS)}")
     granted = frozenset(features) if features else feat_mod.TIER_FEATURES[tier]
     unknown = granted - {f for fs in feat_mod.TIER_FEATURES.values() for f in fs}
     if unknown:
@@ -249,17 +250,17 @@ def _cmd_pubkey(args: argparse.Namespace) -> int:
 
 # --- Update-signing key (separate from license key) ---------------------
 
+
 def _load_or_create_keypair_at(path: Path, *, force: bool = False) -> Keypair:
     """Like _load_or_create_keypair but unconditionally writes if --force."""
     if path.exists() and not force:
         logger.info("loading existing private key from %s", path)
         key = serialization.load_pem_private_key(
-            path.read_bytes(), password=None,
+            path.read_bytes(),
+            password=None,
         )
         if not isinstance(key, Ed25519PrivateKey):
-            raise SystemExit(
-                f"private key at {path} is not an Ed25519 key"
-            )
+            raise SystemExit(f"private key at {path} is not an Ed25519 key")
         return Keypair(private_key=key, public_key=key.public_key())
     if path.exists() and force:
         logger.warning("overwriting existing key at %s (force=True)", path)
@@ -325,17 +326,18 @@ def main(argv: list[str] | None = None) -> int:
     )
     p_sign.add_argument("--product", default=DEFAULT_PRODUCT)
     p_sign.add_argument("--product-version", default=DEFAULT_PRODUCT_VERSION)
-    p_sign.add_argument(
-        "--features", nargs="*", help="Override default tier features (advanced)"
-    )
+    p_sign.add_argument("--features", nargs="*", help="Override default tier features (advanced)")
     p_sign.add_argument("--license-id", help="Override the auto-generated license ID")
     p_sign.set_defaults(func=_cmd_sign)
 
-    p_pub = sub.add_parser("pubkey", help="Print the public key bytes (for embedding in the product)")
+    p_pub = sub.add_parser(
+        "pubkey", help="Print the public key bytes (for embedding in the product)"
+    )
     p_pub.set_defaults(func=_cmd_pubkey)
 
     p_init_upd = sub.add_parser(
-        "init-update", help="Generate the UPDATE-signing keypair (separate from the license key)",
+        "init-update",
+        help="Generate the UPDATE-signing keypair (separate from the license key)",
     )
     p_init_upd.add_argument("--force", action="store_true", help="Overwrite existing key")
     p_init_upd.add_argument("--key-path", help="Path to the update private key")

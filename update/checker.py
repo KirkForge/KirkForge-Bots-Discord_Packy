@@ -16,7 +16,6 @@ import urllib.error
 import urllib.request
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
-from typing import Any
 
 from update.manifest import (
     DEFAULT_MANIFEST_URL,
@@ -37,10 +36,10 @@ class UpdateCheck:
     latest_version: str | None
     available: bool
     signature_ok: bool
-    upgrade_command: str | None      # only set when signature_ok=True
+    upgrade_command: str | None  # only set when signature_ok=True
     changelog_url: str | None
     release_notes: str | None
-    notes: str | None                 # alias for release_notes (operator-facing)
+    notes: str | None  # alias for release_notes (operator-facing)
     requires_support_active: bool
     published_at: str | None
     checked_at: str
@@ -62,9 +61,7 @@ def _parse_version(tag: str) -> tuple[int, ...]:
     return tuple(parts) if parts else (0,)
 
 
-def _new_check(
-    current_version: str, manifest_url: str, error: str | None = None
-) -> UpdateCheck:
+def _new_check(current_version: str, manifest_url: str, error: str | None = None) -> UpdateCheck:
     """Empty success-shape check, used as the base for error returns."""
     return UpdateCheck(
         current_version=current_version,
@@ -96,19 +93,21 @@ def check_for_update(
     try:
         req = urllib.request.Request(
             manifest_url,
-            headers={"User-Agent": "kirkforge-packy-updater/0.1",
-                     "Accept": "application/json"},
+            headers={"User-Agent": "kirkforge-packy-updater/0.1", "Accept": "application/json"},
         )
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             if resp.status != 200:
                 return _new_check(
-                    current_version, manifest_url,
+                    current_version,
+                    manifest_url,
                     error=f"manifest fetch returned HTTP {resp.status}",
                 )
             blob = resp.read().decode("utf-8")
     except (urllib.error.URLError, urllib.error.HTTPError, OSError) as exc:
         return _new_check(
-            current_version, manifest_url, error=f"fetch failed: {exc}",
+            current_version,
+            manifest_url,
+            error=f"fetch failed: {exc}",
         )
 
     # 2. Parse
@@ -116,7 +115,8 @@ def check_for_update(
         manifest = Manifest.from_json(blob)
     except Exception as exc:
         return _new_check(
-            current_version, manifest_url,
+            current_version,
+            manifest_url,
             error=f"manifest parse failed: {exc}",
         )
 

@@ -1,9 +1,9 @@
-
 KEYWORDS = {
     "angry": ["hate", "angry", "mad", "furious"],
     "happy": ["love", "great", "nice", "awesome"],
     "technical": ["cpu", "temperature", "system", "load"],
 }
+
 
 def extract_keywords(text):
     found = []

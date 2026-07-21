@@ -57,9 +57,7 @@ def verify_signature(license_dict: dict[str, Any]) -> None:
         raise LicenseFormatError(f"signature is not valid base64: {exc}") from exc
 
     if len(signature) != 64:
-        raise LicenseFormatError(
-            f"signature must be 64 bytes (Ed25519), got {len(signature)}"
-        )
+        raise LicenseFormatError(f"signature must be 64 bytes (Ed25519), got {len(signature)}")
 
     message = _canonical_payload(license_dict)
     pubkey = Ed25519PublicKey.from_public_bytes(_keys.PUBLIC_KEY_RAW)

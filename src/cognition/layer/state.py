@@ -1,4 +1,3 @@
-
 class PackyState:
     def __init__(self):
         self.turn = 0

@@ -28,6 +28,7 @@ reminder_router = APIRouter(tags=["reminders"])
 
 # ---- Request/Response models ----
 
+
 class AlarmCreateRequest(BaseModel):
     title: str = Field(..., min_length=1, max_length=200)
     time_iso: str = Field(..., description="ISO 8601 datetime string")
@@ -73,6 +74,7 @@ class DeleteResponse(BaseModel):
 
 # ---- Alarm routes ----
 
+
 @alarm_router.post("/", response_model=AlarmResponse)
 def api_create_alarm(request: AlarmCreateRequest) -> AlarmResponse:
     """Create a new alarm."""
@@ -107,6 +109,7 @@ def api_delete_alarm(alarm_id: int) -> DeleteResponse:
 
 
 # ---- Reminder routes ----
+
 
 @reminder_router.post("/", response_model=ReminderResponse)
 def api_create_reminder(request: ReminderCreateRequest) -> ReminderResponse:

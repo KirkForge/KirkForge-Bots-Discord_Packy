@@ -1,6 +1,7 @@
 from packy_snark import get_snark_lines
 from datetime import datetime
 
+
 def generate_python_script(task_description, function_name="run"):
     timestamp = datetime.utcnow().isoformat() + "Z"
     snark = get_snark_lines(3)

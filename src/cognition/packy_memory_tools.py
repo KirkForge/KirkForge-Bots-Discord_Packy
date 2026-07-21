@@ -2,9 +2,9 @@
 packy_memory_tools.py — Packy V2.0.0
 Memory query and write tools. Called by PackyBrain when remembering or storing things.
 """
+
 from __future__ import annotations
 import json
-import os
 import uuid
 import datetime
 from pathlib import Path
@@ -57,10 +57,7 @@ def save_memory(text: str, tags: list = None, mood: str = "GRUMPY") -> dict:
         memories.append(entry)
 
         # Save back to file
-        MEMORY_FILE.write_text(
-            json.dumps({"memories": memories}, indent=2),
-            encoding="utf-8"
-        )
+        MEMORY_FILE.write_text(json.dumps({"memories": memories}, indent=2), encoding="utf-8")
         return entry
     except Exception:
         return entry
@@ -77,9 +74,10 @@ def recall_memories(query: str = None, n: int = 5) -> list:
     # Filter by query keyword match
     query_lower = query.lower()
     filtered = [
-        m for m in memories
-        if query_lower in m.get("text", "").lower() or
-           any(query_lower in tag.lower() for tag in m.get("tags", []))
+        m
+        for m in memories
+        if query_lower in m.get("text", "").lower()
+        or any(query_lower in tag.lower() for tag in m.get("tags", []))
     ]
 
     # Return last n matching memories (most recent first)
@@ -97,10 +95,7 @@ def forget_memory(memory_id: str) -> bool:
 
         if len(memories) < original_count:
             # Memory was removed, save the updated list
-            MEMORY_FILE.write_text(
-                json.dumps({"memories": memories}, indent=2),
-                encoding="utf-8"
-            )
+            MEMORY_FILE.write_text(json.dumps({"memories": memories}, indent=2), encoding="utf-8")
             return True
         return False
     except Exception:

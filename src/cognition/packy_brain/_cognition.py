@@ -8,7 +8,7 @@ from __future__ import annotations
 import logging
 from typing import List, Optional
 
-from ._setup import _default_generate_script, _try_import, logger
+from ._setup import _default_generate_script, _try_import
 
 logger = logging.getLogger("packy.brain.cognition")
 
@@ -45,11 +45,15 @@ class PackyCognitionMixin:
     def _basic_think_fallback(self, instruction: str) -> str:
         return f"Packy (fallback) thinks: I heard '{instruction}'. Be more specific."
 
-    def generate_code_from_instruction(self, instruction: str, preferred_language: Optional[str] = None) -> str:
+    def generate_code_from_instruction(
+        self, instruction: str, preferred_language: Optional[str] = None
+    ) -> str:
         try:
             interp = self.interpret(instruction)
             plan = self.plan(interp)
-            language = preferred_language or interp.get("language") or plan.get("language") or "python"
+            language = (
+                preferred_language or interp.get("language") or plan.get("language") or "python"
+            )
             task_desc = instruction.strip()
             plan_notes = plan.get("notes") or []
             if plan_notes:
@@ -64,13 +68,16 @@ class PackyCognitionMixin:
                 logger.debug("comment_snark lines not available; using fallback")
 
             if not header_snark_lines:
-                header_snark_lines = (self.unfinished_snark[:3] or
-                                      self.structured_lore.get("categories", {}).get("misc_packyisms", [])[:3] or [])
+                header_snark_lines = (
+                    self.unfinished_snark[:3]
+                    or self.structured_lore.get("categories", {}).get("misc_packyisms", [])[:3]
+                    or []
+                )
 
             header_block = ""
             if header_snark_lines:
-                for l in header_snark_lines:
-                    header_block += f"# {l}\n"
+                for line in header_snark_lines:
+                    header_block += f"# {line}\n"
                 header_block += "\n"
 
             if language.lower().startswith("py"):
@@ -85,5 +92,7 @@ class PackyCognitionMixin:
 
             return header_block + _default_generate_script(language, task_desc)
         except Exception:
-            logger.exception("generate_code_from_instruction failed; falling back to default script")
+            logger.exception(
+                "generate_code_from_instruction failed; falling back to default script"
+            )
             return _default_generate_script(preferred_language or "python", instruction)

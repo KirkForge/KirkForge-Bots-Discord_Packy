@@ -16,6 +16,7 @@ WAR_STORY_TEMPLATES = [
     ("BIOS Flashback", "BIOS flashing memories included — ear plugs recommended."),
 ]
 
+
 def _get_snark_excerpt(n=2):
     pool = None
     if _snark_pool:
@@ -27,6 +28,7 @@ def _get_snark_excerpt(n=2):
         # fallback minimal snark
         return ["Packy: back when floppies mattered...", "If this breaks, blame the meatbag."]
     return random.sample(pool, min(n, len(pool)))
+
 
 def build_war_header(task_description=None, include_time=True, lines=3):
     """
@@ -44,9 +46,9 @@ def build_war_header(task_description=None, include_time=True, lines=3):
         hdr_lines.append(f"# Task: {task_description}")
     hdr_lines.append(f"# {lead}")
     hdr_lines.append("#")
-    for l in snark_lines:
+    for line in snark_lines:
         # normalize to single-line comment prefix
-        comment = l.replace("\n", " ").strip()
+        comment = line.replace("\n", " ").strip()
         hdr_lines.append(f"# {comment}")
     hdr_lines.append("# -------------------------------------------------------------")
     return "\n".join(hdr_lines) + "\n\n"

@@ -3,6 +3,7 @@
 
 from typing import Tuple
 
+
 def cpu_mood(cpu_pct: int) -> Tuple[str, str, str]:
     """Return base mood and snark level from pure CPU load.
 
@@ -24,6 +25,7 @@ def cpu_mood(cpu_pct: int) -> Tuple[str, str, str]:
     else:
         return "CALM", "LOW", "SHORT"
 
+
 def weather_modifier(temp_c: float) -> str:
     """Determine weather emotional modifier.
 
@@ -42,6 +44,7 @@ def weather_modifier(temp_c: float) -> str:
         return "COMFORTED"
     return "NEUTRAL"
 
+
 def combine_mood(base_mood: str, modifier: str) -> str:
     """Combine CPU mood + weather modifier.
 
@@ -55,6 +58,7 @@ def combine_mood(base_mood: str, modifier: str) -> str:
     if modifier == "NEUTRAL":
         return base_mood
     return f"{base_mood}-{modifier}"
+
 
 def resolve_packy_state(cpu_pct: int, temp_c: float) -> dict:
     """Resolve Packy's emotional state from system metrics.
@@ -80,8 +84,9 @@ def resolve_packy_state(cpu_pct: int, temp_c: float) -> dict:
         "snark_level": snark,
         "response_style": style,
         "cpu_pct": cpu_pct,
-        "weather": modifier
+        "weather": modifier,
     }
+
 
 # Example usage:
 if __name__ == "__main__":

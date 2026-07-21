@@ -1,26 +1,16 @@
 import subprocess
-import textwrap
 
 LLAMA_BIN = "/home/hkirk/packy2/runtime/llama.cpp/build/bin/llama-cli"
 MODEL_PATH = "/home/hkirk/packy2/runtime/llama.cpp/models/tinyllama-1.1b-chat-v1.0.Q4_0.gguf"
+
 
 def call_llama(prompt: str, max_tokens: int = 256) -> str:
     """
     Call llama.cpp via llama-cli and return generated text.
     """
-    cmd = [
-        LLAMA_BIN,
-        "-m", MODEL_PATH,
-        "-p", prompt,
-        "--n-predict", str(max_tokens),
-        "--no-warmup"
-    ]
+    cmd = [LLAMA_BIN, "-m", MODEL_PATH, "-p", prompt, "--n-predict", str(max_tokens), "--no-warmup"]
 
-    result = subprocess.run(
-        cmd,
-        capture_output=True,
-        text=True
-    )
+    result = subprocess.run(cmd, capture_output=True, text=True)
 
     if result.returncode != 0:
         return f"[LLAMA ERROR]\n{result.stderr}"

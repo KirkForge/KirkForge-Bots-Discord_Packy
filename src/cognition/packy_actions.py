@@ -1,5 +1,6 @@
 from packy_snark import get_snark_lines
 
+
 def play_music(track_or_playlist):
     """Pretend to play music — Packy injects snark."""
     snark_list = get_snark_lines(1)

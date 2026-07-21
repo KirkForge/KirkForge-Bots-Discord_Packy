@@ -1,8 +1,11 @@
-import json, os, uuid, datetime
+import json
+import uuid
+import datetime
 from pathlib import Path
 
 _DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 _DEFAULT_PENDING_FOLDER = _DATA_DIR / "pending_lore"
+
 
 def create_lore_entry(category, subcategory, packy_text, state):
     entry = {
@@ -13,11 +16,12 @@ def create_lore_entry(category, subcategory, packy_text, state):
         "cpu": state["cpu_pct"],
         "temp": state["weather"],
         "text": packy_text.strip(),
-        "tags": [],   # can be auto-filled later
+        "tags": [],  # can be auto-filled later
         "approved": False,
-        "timestamp": datetime.datetime.utcnow().isoformat()
+        "timestamp": datetime.datetime.utcnow().isoformat(),
     }
     return entry
+
 
 def save_pending_entry(entry, folder=None):
     folder = Path(folder) if folder else _DEFAULT_PENDING_FOLDER

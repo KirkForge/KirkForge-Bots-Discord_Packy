@@ -27,7 +27,10 @@ DEFAULT_SCHEDULER_DB = os.getenv("PACKY_SCHEDULER_DB", "/mnt/data/scheduler.db")
 _global_scheduler = get_global_scheduler(
     poll_interval_seconds=float(os.getenv("PACKY_SCHEDULER_POLL", "1.0"))
 )
-logger.info("Global scheduler instance created and started (poll_interval=%s)", os.getenv("PACKY_SCHEDULER_POLL", "1.0"))
+logger.info(
+    "Global scheduler instance created and started (poll_interval=%s)",
+    os.getenv("PACKY_SCHEDULER_POLL", "1.0"),
+)
 
 _persistence_store: Optional[SchedulerStore] = None
 

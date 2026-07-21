@@ -26,6 +26,7 @@ def _ensure_store():
     global _scheduler_store
     if _scheduler_store is None:
         from .main import init_persistence
+
         _scheduler_store = init_persistence()
     return _scheduler_store
 
@@ -39,7 +40,9 @@ def create_alarm(
     """Create an alarm and schedule it. Returns canonical response dict."""
     store = _ensure_store()
     try:
-        alarm = store.create_alarm(title=title, time_iso=time_iso, payload=payload or {}, enabled=enabled)
+        alarm = store.create_alarm(
+            title=title, time_iso=time_iso, payload=payload or {}, enabled=enabled
+        )
         return {"ok": True, "alarm": alarm}
     except Exception as e:
         logger.exception("create_alarm failed: %s", e)

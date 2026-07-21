@@ -5,5 +5,6 @@ PACKY_PYTHON_TUTORIAL = [
     "Lesson 4: try/except is for handling errors. You should use it more often.",
 ]
 
+
 def teach_python():
     return PACKY_PYTHON_TUTORIAL

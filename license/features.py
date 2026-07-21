@@ -38,38 +38,46 @@ FEATURE_SLA: Final = "sla"
 # Tier → set of included features.
 # Keep this ordered from least to most capable.
 TIER_FEATURES: Final[dict[str, frozenset[str]]] = {
-    TIER_COMMUNITY: frozenset({
-        FEATURE_CORE_CHARACTER,
-        FEATURE_DISCORD_BOT,
-    }),
-    TIER_INDIE: frozenset({
-        FEATURE_CORE_CHARACTER,
-        FEATURE_DISCORD_BOT,
-        FEATURE_MICROSERVICE_MODE,
-        FEATURE_CHAOS_LAYER,
-    }),
-    TIER_PRO: frozenset({
-        FEATURE_CORE_CHARACTER,
-        FEATURE_DISCORD_BOT,
-        FEATURE_MICROSERVICE_MODE,
-        FEATURE_MULTI_GUILD,
-        FEATURE_CUSTOM_PERSONA,
-        FEATURE_ADVANCED_LORE,
-        FEATURE_CHAOS_LAYER,
-        FEATURE_PRIORITY_SUPPORT,
-    }),
-    TIER_ENTERPRISE: frozenset({
-        FEATURE_CORE_CHARACTER,
-        FEATURE_DISCORD_BOT,
-        FEATURE_MICROSERVICE_MODE,
-        FEATURE_MULTI_GUILD,
-        FEATURE_CUSTOM_PERSONA,
-        FEATURE_ADVANCED_LORE,
-        FEATURE_CHAOS_LAYER,
-        FEATURE_PRIORITY_SUPPORT,
-        FEATURE_SOURCE_CODE,
-        FEATURE_SLA,
-    }),
+    TIER_COMMUNITY: frozenset(
+        {
+            FEATURE_CORE_CHARACTER,
+            FEATURE_DISCORD_BOT,
+        }
+    ),
+    TIER_INDIE: frozenset(
+        {
+            FEATURE_CORE_CHARACTER,
+            FEATURE_DISCORD_BOT,
+            FEATURE_MICROSERVICE_MODE,
+            FEATURE_CHAOS_LAYER,
+        }
+    ),
+    TIER_PRO: frozenset(
+        {
+            FEATURE_CORE_CHARACTER,
+            FEATURE_DISCORD_BOT,
+            FEATURE_MICROSERVICE_MODE,
+            FEATURE_MULTI_GUILD,
+            FEATURE_CUSTOM_PERSONA,
+            FEATURE_ADVANCED_LORE,
+            FEATURE_CHAOS_LAYER,
+            FEATURE_PRIORITY_SUPPORT,
+        }
+    ),
+    TIER_ENTERPRISE: frozenset(
+        {
+            FEATURE_CORE_CHARACTER,
+            FEATURE_DISCORD_BOT,
+            FEATURE_MICROSERVICE_MODE,
+            FEATURE_MULTI_GUILD,
+            FEATURE_CUSTOM_PERSONA,
+            FEATURE_ADVANCED_LORE,
+            FEATURE_CHAOS_LAYER,
+            FEATURE_PRIORITY_SUPPORT,
+            FEATURE_SOURCE_CODE,
+            FEATURE_SLA,
+        }
+    ),
 }
 
 

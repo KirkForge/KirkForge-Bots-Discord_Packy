@@ -24,6 +24,7 @@ def _ensure_store():
     global _scheduler_store
     if _scheduler_store is None:
         from .main import init_persistence
+
         _scheduler_store = init_persistence()
     return _scheduler_store
 
@@ -38,7 +39,9 @@ def create_reminder(
     store = _ensure_store()
     title = note if note else "Reminder"
     try:
-        alarm = store.create_alarm(title=title, time_iso=time_iso, payload=payload or {}, enabled=enabled)
+        alarm = store.create_alarm(
+            title=title, time_iso=time_iso, payload=payload or {}, enabled=enabled
+        )
         return {"ok": True, "reminder": alarm}
     except Exception as e:
         logger.exception("create_reminder failed: %s", e)

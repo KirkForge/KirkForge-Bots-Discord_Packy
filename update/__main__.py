@@ -33,6 +33,7 @@ logger = logging.getLogger("update")
 def _current_version() -> str:
     """Read the product version from pyproject.toml (best-effort)."""
     import re
+
     pyproject = _PROJECT_ROOT / "pyproject.toml"
     if not pyproject.is_file():
         return "0.0.0"

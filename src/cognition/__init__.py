@@ -3,16 +3,16 @@
 # Defensive imports to avoid breaking startup
 
 try:
-    from .packy_snark import *
+    from .packy_snark import *  # noqa: F403
 except ImportError:
     pass
 
 try:
-    from .packy_actions import *
+    from .packy_actions import *  # noqa: F403
 except ImportError:
     pass
 
 try:
-    from .packy_teaching import *
+    from .packy_teaching import *  # noqa: F403
 except ImportError:
     pass

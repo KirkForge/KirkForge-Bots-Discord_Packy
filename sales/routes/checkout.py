@@ -28,8 +28,9 @@ logger = logging.getLogger(__name__)
 def real_stripe_checkout_factory(cfg: SalesConfig) -> Callable[..., dict]:
     stripe.api_key = cfg.stripe_secret_key
 
-    def create(*, price_id: str, success_url: str, cancel_url: str,
-               customer_email: str | None) -> dict:
+    def create(
+        *, price_id: str, success_url: str, cancel_url: str, customer_email: str | None
+    ) -> dict:
         kwargs = {
             "mode": "payment",
             "line_items": [{"price": price_id, "quantity": 1}],

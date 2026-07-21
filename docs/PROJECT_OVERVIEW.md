@@ -33,9 +33,7 @@ Discord (discord.js bot)
     packy_brain.py                 — central integration hub
     packy_cog_engine.py            — interpret → plan → reason
     packy_mood_engine.py           — mood/snark matrix
-    packy_snark_engine.py          — snark banks
-    packy_snark.py                 — extended snark pool
-    packy_comment_snark.py         — code comment snark
+    packy_snark.py                 — snark banks (consolidated, ADR-006)
     packy_war_header.py            — war story header generator
     packy_persona.py               — core identity
     packy_lore_manager.py          — lore entry lifecycle
@@ -119,10 +117,8 @@ user input
 ```
 
 ### Snark System
-Three-pool architecture (consolidation deferred to post-MVP):
-- `packy_snark_engine.py` — canonical interface (`get_snark_lines(n)`)
-- `packy_snark.py` — extended bank (15KB)
-- `packy_comment_snark.py` — code-specific bank (15KB)
+Single consolidated snark module (ADR-006 Fulfilled):
+- `packy_snark.py` — canonical interface + all snark data
 
 ### Lore System
 Runtime injection from `packy_lorebook_structured.json`. Keyword + mood matching selects relevant entries and injects them into the system prompt as narrative memory. Packy can generate new lore entries at runtime; they land in `pending_lore/` for review.
@@ -147,9 +143,9 @@ All critical V2.0.0 scope items are complete:
 
 ## Remaining / Post-MVP
 
-- **Snark consolidation (Python side):** `packy_snark.py` + `packy_snark_engine.py` + `packy_comment_snark.py` are still three separate files. Deferred until Python cognition layer needs refactoring.
+- **Snark consolidation (Python side):** Fulfilled — consolidated into `packy_snark.py` (ADR-006).
 - **Lore expansion:** 20 new entries in `data/lorebook/new_lore_entries.json`. Use `docs/MINIMAX_PROMPTS.md` Prompt 3 to generate more.
-- **Web admin panel:** Deferred (see ADR-002). `src/bot/packy.js` is the archived web terminal UI.
+- **Web admin panel:** Deferred (see ADR-002).
 
 ---
 

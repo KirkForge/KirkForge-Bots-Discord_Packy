@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import logging
 import os
-import secrets
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -49,8 +48,8 @@ class SalesConfig:
 
     # License signing
     license_private_key_path: Path  # PEM file, mode 600
-    license_product_id: str        # "gargoyle-packy"
-    license_product_version: str   # "2.0.0"
+    license_product_id: str  # "gargoyle-packy"
+    license_product_version: str  # "2.0.0"
 
     # Database
     db_path: Path

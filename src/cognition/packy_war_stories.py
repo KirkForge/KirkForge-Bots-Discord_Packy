@@ -2,6 +2,7 @@
 packy_war_stories.py — Gargoyle Packy V2.0.0
 War story loader and picker. Used by orchestrator for prompt enrichment.
 """
+
 import json
 import random
 from pathlib import Path
@@ -55,8 +56,7 @@ def pick_war_story(force_id: int = None, mood: str = None, chance: float = 0.25)
     # Filter by mood if specified
     if mood is not None:
         mood_stories = [
-            s for s in stories
-            if s.get("mood_required") == mood or s.get("mood_required") == "ANY"
+            s for s in stories if s.get("mood_required") == mood or s.get("mood_required") == "ANY"
         ]
         if mood_stories and random.random() < chance:
             return random.choice(mood_stories)

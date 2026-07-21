@@ -13,7 +13,6 @@ that runs.
 
 from __future__ import annotations
 
-import logging
 import sys as _sys
 from pathlib import Path
 from typing import Optional

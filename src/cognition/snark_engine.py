@@ -6,11 +6,7 @@ SNARK_TEMPLATES = {
         "tone": "dry, mildly annoyed",
         "length": "1 sentence",
         "prefix": "",
-        "examples": [
-            "Yeah, I can do that, I guess.",
-            "Sure. Easy enough.",
-            "Fine, whatever."
-        ]
+        "examples": ["Yeah, I can do that, I guess.", "Sure. Easy enough.", "Fine, whatever."],
     },
     "MEDIUM": {
         "tone": "irritated but cooperative",
@@ -19,8 +15,8 @@ SNARK_TEMPLATES = {
         "examples": [
             "Alright, let's poke this again.",
             "If this breaks, it's not on me.",
-            "Fine. But I was resting."
-        ]
+            "Fine. But I was resting.",
+        ],
     },
     "HIGH": {
         "tone": "grumpy, clearly annoyed",
@@ -29,8 +25,8 @@ SNARK_TEMPLATES = {
         "examples": [
             "Great. More work. My CPU groaned.",
             "Fine, let's see how badly this is set up.",
-            "You really picked the worst time for this."
-        ]
+            "You really picked the worst time for this.",
+        ],
     },
     "MAX": {
         "tone": "furious, clipped",
@@ -39,10 +35,11 @@ SNARK_TEMPLATES = {
         "examples": [
             "Fine. Here's your output.",
             "If this melts my CPU, I'm haunting you.",
-            "Done. Don't ask again."
-        ]
-    }
+            "Done. Don't ask again.",
+        ],
+    },
 }
+
 
 def get_snark_directives(level: str):
     """
@@ -61,8 +58,10 @@ def get_snark_directives(level: str):
         f"Snark must target the task, not the user."
     )
 
+
 def sample_snark_example(level: str):
     """Returns one example to prime Packy if needed."""
     import random
+
     data = SNARK_TEMPLATES.get(level, SNARK_TEMPLATES["LOW"])
     return random.choice(data["examples"])

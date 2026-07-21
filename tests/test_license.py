@@ -14,10 +14,7 @@ Run: pytest tests/test_license.py -v
 
 from __future__ import annotations
 
-import json
 import sys
-import tempfile
-from pathlib import Path
 
 import pytest
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
@@ -54,6 +51,7 @@ from conftest import make_signed_license, write_license_to
 
 # --- Sanity: product is "gargoyle-packy" ---------------------------------
 
+
 def test_product_id_is_packy():
     assert PRODUCT_ID == "gargoyle-packy"
 
@@ -66,6 +64,7 @@ def test_default_tiers_present():
 
 
 # --- Tier feature map ----------------------------------------------------
+
 
 def test_community_tier_basics():
     # Community is the eval tier: character + discord bot only.
@@ -103,6 +102,7 @@ def test_enterprise_unlocks_source_and_sla():
 
 # --- Sign / verify round trip -------------------------------------------
 
+
 def test_signed_license_loads_cleanly(license_keypair, tmp_path):
     priv, _pub = license_keypair
     license_dict = make_signed_license(priv, tier=TIER_PRO)
@@ -135,9 +135,7 @@ def test_wrong_public_key_rejected(tmp_path, monkeypatch):
 
     # Embed key B in the product
     priv_b = Ed25519PrivateKey.generate()
-    monkeypatch.setattr(
-        license_keys_mod, "PUBLIC_KEY_RAW", priv_b.public_key().public_bytes_raw()
-    )
+    monkeypatch.setattr(license_keys_mod, "PUBLIC_KEY_RAW", priv_b.public_key().public_bytes_raw())
 
     with pytest.raises(LicenseSignatureError):
         load(path=path)
@@ -193,6 +191,7 @@ def test_dev_license_bypass_boots_community(monkeypatch, tmp_path):
     if "src.orchestration.packy_endpoint" in sys.modules:
         del sys.modules["src.orchestration.packy_endpoint"]
     from src.orchestration import packy_endpoint
+
     try:
         loaded = packy_endpoint.boot_license()
         assert loaded.tier == TIER_COMMUNITY
@@ -228,6 +227,7 @@ def test_missing_signature_rejected(license_keypair, tmp_path):
 
 # --- load() not-found ----------------------------------------------------
 
+
 def test_load_raises_when_no_license_anywhere(monkeypatch, tmp_path):
     # Run from a tmp dir + override env to guarantee nothing is found
     monkeypatch.chdir(tmp_path)
@@ -241,12 +241,15 @@ def test_load_raises_when_no_license_anywhere(monkeypatch, tmp_path):
 
 # --- require_feature -----------------------------------------------------
 
+
 def test_require_feature_fails_closed_when_no_license_loaded():
     import license as lic
+
     saved = lic.current
     lic.current = None
     try:
         from license import LicenseFeatureUnavailable, require_feature
+
         with pytest.raises(LicenseFeatureUnavailable):
             require_feature(FEATURE_DISCORD_BOT)
     finally:

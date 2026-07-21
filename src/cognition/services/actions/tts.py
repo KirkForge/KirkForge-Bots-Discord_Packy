@@ -26,6 +26,7 @@ def speak(
 
     try:
         from ..tts_engine import TtsEngine
+
         engine = TtsEngine()
         out = engine.speak(text, blocking=bool(blocking))
         if out:

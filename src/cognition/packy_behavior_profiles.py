@@ -3,6 +3,7 @@ packy_behavior_profiles.py — Packy V2.0.0
 Maps Packy's current mood/state to a behavior profile that modifies response style.
 Used by PackyBrain to tune output before sending to LLM.
 """
+
 from __future__ import annotations
 
 BEHAVIOR_PROFILES = {

@@ -5,17 +5,14 @@ from datetime import datetime
 _DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 PERSISTENT_LORE = _DATA_DIR / "pending_lore" / "packy_persistent_lore.json"
 
+
 def write_lore(entry_text, tags=None):
     """Append new lore created by Packy himself."""
 
     if tags is None:
         tags = ["self_written"]
 
-    entry = {
-        "text": entry_text,
-        "tags": tags,
-        "timestamp": datetime.utcnow().isoformat() + "Z"
-    }
+    entry = {"text": entry_text, "tags": tags, "timestamp": datetime.utcnow().isoformat() + "Z"}
 
     # load or create file
     PERSISTENT_LORE.parent.mkdir(parents=True, exist_ok=True)

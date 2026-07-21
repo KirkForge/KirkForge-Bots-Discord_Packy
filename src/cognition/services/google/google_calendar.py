@@ -25,7 +25,13 @@ def get_today_events() -> List[Dict]:
     try:
         events = (
             svc.events()
-            .list(calendarId="primary", timeMin=now, timeMax=end, singleEvents=True, orderBy="startTime")
+            .list(
+                calendarId="primary",
+                timeMin=now,
+                timeMax=end,
+                singleEvents=True,
+                orderBy="startTime",
+            )
             .execute()
             .get("items", [])
         )
@@ -45,7 +51,13 @@ def get_week_events() -> List[Dict]:
     try:
         events = (
             svc.events()
-            .list(calendarId="primary", timeMin=now, timeMax=end, singleEvents=True, orderBy="startTime")
+            .list(
+                calendarId="primary",
+                timeMin=now,
+                timeMax=end,
+                singleEvents=True,
+                orderBy="startTime",
+            )
             .execute()
             .get("items", [])
         )

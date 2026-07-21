@@ -12,7 +12,6 @@ import logging
 import os
 import sqlite3
 import threading
-import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
@@ -26,7 +25,7 @@ DEFAULT_DB = os.getenv("PACKY_SCHEDULER_DB", "/mnt/data/scheduler.db")
 
 SCHEMA_VERSION = 1
 
-_SCHEMA = f"""
+_SCHEMA = """
 PRAGMA journal_mode=WAL;
 CREATE TABLE IF NOT EXISTS meta (
     k TEXT PRIMARY KEY,
@@ -160,6 +159,7 @@ class SchedulerStore:
                 # Try to forward event
                 try:
                     from .integration import forward_event
+
                     forward_event(alarm_row)
                 except Exception:
                     logger.debug("[scheduler_store] forward_event unavailable")

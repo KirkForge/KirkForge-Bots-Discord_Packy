@@ -17,7 +17,6 @@ they don't collide. Generate it with:
 from __future__ import annotations
 
 import argparse
-import json
 import logging
 import sys
 from datetime import datetime, timezone
@@ -57,7 +56,8 @@ def _load_update_key(path: Path) -> Ed25519PrivateKey:
         if mode & 0o077:
             logger.warning(
                 "Update private key %s has permissive mode %04o — should be 0600",
-                path, mode,
+                path,
+                mode,
             )
     except OSError:
         pass
@@ -102,6 +102,7 @@ def _cmd_verify_manifest(args: argparse.Namespace) -> int:
     the embedded public key, print the result. Useful right after signing
     and as a smoke test before committing the manifest to the repo."""
     from update.manifest import verify_manifest
+
     path = Path(args.manifest)
     manifest = Manifest.from_json(path.read_text(encoding="utf-8"))
     try:
@@ -131,28 +132,36 @@ def main(argv: list[str] | None = None) -> int:
     p_sign = sub.add_parser("sign-manifest", help="Sign a release manifest")
     p_sign.add_argument("--version", required=True, help="Version string, e.g. 2.0.1")
     p_sign.add_argument(
-        "--upgrade-command", required=True,
+        "--upgrade-command",
+        required=True,
         help="Shell command customers should run to upgrade (e.g. 'git pull && pip install ...')",
     )
     p_sign.add_argument(
-        "--changelog-url", required=True,
+        "--changelog-url",
+        required=True,
         help="URL to the changelog for this release",
     )
-    p_sign.add_argument("--min-python", default="3.11", help="Minimum Python version (default: 3.11)")
     p_sign.add_argument(
-        "--notes", default="",
+        "--min-python", default="3.11", help="Minimum Python version (default: 3.11)"
+    )
+    p_sign.add_argument(
+        "--notes",
+        default="",
         help="Optional release notes (shown to customers)",
     )
     p_sign.add_argument(
-        "--product", default="gargoyle-packy",
+        "--product",
+        default="gargoyle-packy",
         help="Product ID (default: gargoyle-packy)",
     )
     p_sign.add_argument(
-        "--free", action="store_true",
+        "--free",
+        action="store_true",
         help="This release does NOT require an active support contract (default: required)",
     )
     p_sign.add_argument(
-        "--out", required=True,
+        "--out",
+        required=True,
         help="Output path for the signed manifest.json",
     )
     p_sign.set_defaults(func=_cmd_sign_manifest)

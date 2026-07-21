@@ -1,4 +1,3 @@
-
 def compute_snark(cpu, temp):
     snark = 0.0
     if cpu is not None:
@@ -6,6 +5,7 @@ def compute_snark(cpu, temp):
     if temp is not None and temp >= 30:
         snark += min((temp - 30) / 10 * 2, 2)
     return min(snark, 5.0)
+
 
 def compute_mood(snark):
     if snark < 1.0:

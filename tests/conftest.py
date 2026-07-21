@@ -5,6 +5,7 @@ embedded `license/keys.py` and `update/keys.py` PUBLIC_KEY_RAW. No
 network, no real Stripe, no SMTP. License + manifest files go to
 tmp_path only.
 """
+
 from __future__ import annotations
 
 import base64
@@ -16,7 +17,6 @@ import pytest
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 import license.keys as license_keys_mod
-import license.loader as license_loader_mod
 import update.keys as update_keys_mod
 from license.claims import LICENSE_FORMAT_VERSION, Customer, LicenseClaims
 
@@ -25,6 +25,7 @@ from license.claims import LICENSE_FORMAT_VERSION, Customer, LicenseClaims
 # gargoyle-packy/license/ (not The_specialist/license/, which would
 # cause product-mismatch errors).
 import sys
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 
@@ -42,7 +43,9 @@ def update_keypair(monkeypatch):
     """Fresh Ed25519 keypair with the public half patched into the
     embedded `update.keys.UPDATE_PUBLIC_KEY_RAW`."""
     priv = Ed25519PrivateKey.generate()
-    monkeypatch.setattr(update_keys_mod, "UPDATE_PUBLIC_KEY_RAW", priv.public_key().public_bytes_raw())
+    monkeypatch.setattr(
+        update_keys_mod, "UPDATE_PUBLIC_KEY_RAW", priv.public_key().public_bytes_raw()
+    )
     return priv, priv.public_key()
 
 

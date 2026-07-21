@@ -2,6 +2,7 @@
 packy_persona_tools.py — Packy V2.0.0
 Runtime persona query tools. Returns identity fragments for prompt injection.
 """
+
 from __future__ import annotations
 import random
 from packy_persona import PACKY_CORE_IDENTITY
@@ -39,14 +40,13 @@ def get_catchphrase() -> str:
 def get_random_intro() -> str:
     """Return a random grumpy intro line using tone + traits."""
     tone = PACKY_CORE_IDENTITY.get("tone", "grumpy old war survivor")
-    traits = get_trait_list()
     catchphrase = get_catchphrase()
 
     intros = [
         f"I'm {PACKY_CORE_IDENTITY.get('nickname', 'Packy')}, a {tone}. Don't waste my time, {catchphrase}.",
         f"Listen up. I'm {PACKY_CORE_IDENTITY.get('name', 'Packard Bell')}, and I've survived worse than this.",
         f"What do you want? I'm {tone}, {catchphrase}. Make it snappy.",
-        f"I've been through enough thermal abuse to know a lazy request when I see one.",
+        "I've been through enough thermal abuse to know a lazy request when I see one.",
         f"Back in my day we fixed problems without asking. Now I'm just {tone}.",
     ]
 

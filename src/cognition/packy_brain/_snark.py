@@ -9,7 +9,7 @@ import logging
 import random
 from typing import List, Optional
 
-from ._setup import _default_get_snark_lines, logger
+from ._setup import _default_get_snark_lines
 
 logger = logging.getLogger("packy.brain.snark")
 
@@ -36,7 +36,11 @@ class PackySnarkMixin:
                         return out[:n]
 
             if self.lore_loaded_from_structured and "categories" in self.structured_lore:
-                cats = sorted(self.structured_lore["categories"].items(), key=lambda x: len(x[1]) if x[1] else 0, reverse=True)
+                cats = sorted(
+                    self.structured_lore["categories"].items(),
+                    key=lambda x: len(x[1]) if x[1] else 0,
+                    reverse=True,
+                )
                 for cat, lines in cats:
                     if not lines:
                         continue

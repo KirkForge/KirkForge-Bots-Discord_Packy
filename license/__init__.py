@@ -18,7 +18,6 @@ license with `tier = "enterprise"` is still rejected.
 from __future__ import annotations
 
 import logging
-from typing import Final
 
 from .claims import LICENSE_FORMAT_VERSION, Customer, LicenseClaims
 from .errors import (

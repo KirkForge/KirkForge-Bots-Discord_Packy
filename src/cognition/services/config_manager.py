@@ -31,4 +31,5 @@ def save_config(cfg: Dict[str, Any]) -> None:
         json.dump(cfg, f, indent=2, ensure_ascii=False)
         f.flush()
     import os
+
     os.replace(tmp, str(CONFIG_PATH))

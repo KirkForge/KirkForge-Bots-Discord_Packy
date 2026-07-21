@@ -8,9 +8,7 @@ shape. Uses TestClient to bypass the real uvicorn startup event
 
 from __future__ import annotations
 
-import json
 import sys
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -19,7 +17,6 @@ from fastapi.testclient import TestClient
 
 import license.keys as license_keys_mod
 import license as lic_mod
-from license import load as load_license
 
 from conftest import make_signed_license, write_license_to
 
@@ -37,9 +34,7 @@ def client(monkeypatch, tmp_path):
     patch the embedded public key to match.
     """
     priv = Ed25519PrivateKey.generate()
-    monkeypatch.setattr(
-        license_keys_mod, "PUBLIC_KEY_RAW", priv.public_key().public_bytes_raw()
-    )
+    monkeypatch.setattr(license_keys_mod, "PUBLIC_KEY_RAW", priv.public_key().public_bytes_raw())
     license_dict = make_signed_license(priv, tier="pro")
     license_path = tmp_path / "license.json"
     write_license_to(license_path, license_dict)
@@ -50,6 +45,7 @@ def client(monkeypatch, tmp_path):
     if "src.orchestration.packy_endpoint" in sys.modules:
         del sys.modules["src.orchestration.packy_endpoint"]
     from src.orchestration import packy_endpoint
+
     # The startup event re-sets license.current. Run it manually so
     # /admin/license has something to return.
     packy_endpoint.boot_license()
@@ -90,6 +86,7 @@ def test_admin_license_503_when_no_license_loaded(monkeypatch, tmp_path):
     if "src.orchestration.packy_endpoint" in sys.modules:
         del sys.modules["src.orchestration.packy_endpoint"]
     from src.orchestration import packy_endpoint
+
     monkeypatch.setattr(packy_endpoint, "boot_license", lambda: None)
     lic_mod.current = None
 
@@ -110,8 +107,7 @@ def test_admin_update_returns_updatecheck_shape(client, monkeypatch):
     assert r.status_code == 200, r.text
     body = r.json()
     # UpdateCheck fields
-    for k in ("current_version", "available", "signature_ok", "checked_at",
-              "manifest_url"):
+    for k in ("current_version", "available", "signature_ok", "checked_at", "manifest_url"):
         assert k in body
     # No network → error populated, no upgrade command
     assert body["upgrade_command"] is None

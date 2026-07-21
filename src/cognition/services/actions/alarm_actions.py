@@ -39,6 +39,7 @@ def run_alarm_action(alarm_row: Dict[str, Any]) -> Dict[str, Any]:
     # Step 2: Forward event
     try:
         from ..integration import forward_event
+
         forward_event(event)
         result["actions"].append("forward_event")
     except Exception:
@@ -50,6 +51,7 @@ def run_alarm_action(alarm_row: Dict[str, Any]) -> Dict[str, Any]:
     if media:
         try:
             from ..media_player import play_file, play_youtube
+
             if isinstance(media, str) and media.startswith("http"):
                 if "youtube" in media or "youtu.be" in media:
                     play_youtube(media)
@@ -66,6 +68,7 @@ def run_alarm_action(alarm_row: Dict[str, Any]) -> Dict[str, Any]:
     if tts_text:
         try:
             from ..tts_engine import TtsEngine
+
             engine = TtsEngine()
             engine.speak(tts_text)
             result["actions"].append("tts_spoken")
@@ -74,6 +77,8 @@ def run_alarm_action(alarm_row: Dict[str, Any]) -> Dict[str, Any]:
 
     logger.info(
         "[alarm_actions] Alarm fired alarm_id=%s title=%s actions=%s",
-        alarm_row.get("id"), alarm_row.get("title"), result["actions"],
+        alarm_row.get("id"),
+        alarm_row.get("title"),
+        result["actions"],
     )
     return result

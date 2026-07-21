@@ -13,6 +13,7 @@ import logging
 
 logger = logging.getLogger("packy.memory_adapter")
 
+
 class MemoryAdapter:
     def __init__(self, backend):
         """
@@ -28,9 +29,7 @@ class MemoryAdapter:
             if hasattr(self.backend, "add_memory"):
                 return self.backend.add_memory(text, tags=tags)
             if isinstance(self.backend, dict):
-                self.backend.setdefault("memories", []).append(
-                    {"text": text, "tags": tags}
-                )
+                self.backend.setdefault("memories", []).append({"text": text, "tags": tags})
                 return True
         except Exception:
             logger.exception("Failed to add memory")

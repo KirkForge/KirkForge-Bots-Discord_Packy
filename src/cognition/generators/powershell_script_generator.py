@@ -1,6 +1,7 @@
 from packy_snark import get_snark_lines
 from datetime import datetime
 
+
 def generate_powershell_script(task_description):
     timestamp = datetime.utcnow().isoformat() + "Z"
     snark = get_snark_lines(2)

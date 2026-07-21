@@ -4,6 +4,7 @@ import requests
 
 logger = logging.getLogger("packy.signals")
 
+
 def read_cpu():
     """Read current CPU percentage (0-100).
 
@@ -15,6 +16,7 @@ def read_cpu():
     except Exception as e:
         logger.warning("Failed to read CPU: %s", e)
         return 0.0
+
 
 def read_weather(api_key, location):
     """Read weather data from OpenWeatherMap API.

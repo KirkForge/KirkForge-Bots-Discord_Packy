@@ -9,7 +9,7 @@ import logging
 import random
 from typing import Any, Dict, List, Optional
 
-from ._setup import _default_get_snark_lines, logger
+from ._setup import _default_get_snark_lines
 
 logger = logging.getLogger("packy.brain.personality")
 
@@ -30,9 +30,15 @@ class PackyPersonalityMixin:
                         break
 
             if not lines:
-                lines = self._get_lines_for_category("misc_packyisms") or self.static_lore_raw or _default_get_snark_lines(5)
+                lines = (
+                    self._get_lines_for_category("misc_packyisms")
+                    or self.static_lore_raw
+                    or _default_get_snark_lines(5)
+                )
 
-            snark_choice = random.choice(lines) if lines else random.choice(_default_get_snark_lines(1))
+            snark_choice = (
+                random.choice(lines) if lines else random.choice(_default_get_snark_lines(1))
+            )
 
             base = self.snark_level
             mood_mod = 0.0
@@ -67,7 +73,7 @@ class PackyPersonalityMixin:
             "Back in my day we fixed this with duct tape and dignity.",
             "Do you even read logs?",
             "This smells like a recursive disaster.",
-            "I survived worse — but not fondly."
+            "I survived worse — but not fondly.",
         ]
 
     def _meltdown_rants(self) -> List[str]:
@@ -75,7 +81,7 @@ class PackyPersonalityMixin:
             "This is exactly like the 200th Windows flash. I will not forgive it.",
             "Thermal paste and sorrow. You brought this on yourselves.",
             "If I had a pound for every time someone did this, I'd throw it at the BIOS.",
-            "You woke the old war stories. Brace yourself."
+            "You woke the old war stories. Brace yourself.",
         ]
 
     def personality_filter(self, text: str, context: Optional[Dict[str, Any]] = None) -> str:

@@ -8,8 +8,6 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, List, Optional
 
-from ._setup import logger
-
 logger = logging.getLogger("packy.brain.memory")
 
 

@@ -18,6 +18,7 @@ logger = logging.getLogger("packy.google_services")
 try:
     from google.oauth2.credentials import Credentials
     from googleapiclient.discovery import build
+
     _GOOGLE_AVAILABLE = True
 except ImportError:
     _GOOGLE_AVAILABLE = False
@@ -41,6 +42,7 @@ def load_credentials() -> Optional["Credentials"]:
 
     if creds.expired and creds.refresh_token:
         from google.auth.transport.requests import Request
+
         try:
             creds.refresh(Request())
             creds_path.write_text(creds.to_json())

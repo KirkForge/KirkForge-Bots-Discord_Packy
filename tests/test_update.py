@@ -29,7 +29,6 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 import update.keys as update_keys_mod
 from update.checker import check_for_update
 from update.manifest import (
-    DEFAULT_MANIFEST_URL,
     Manifest,
     ManifestVerificationError,
     sign_manifest,
@@ -38,6 +37,7 @@ from update.manifest import (
 
 
 # --- Fixtures -------------------------------------------------------------
+
 
 @pytest.fixture()
 def update_keypair():
@@ -67,13 +67,12 @@ def signed_manifest(update_keypair) -> Manifest:
 def patched_update_key(update_keypair, monkeypatch):
     """Point update.keys.UPDATE_PUBLIC_KEY_RAW at the test key's public half."""
     _, pub = update_keypair
-    monkeypatch.setattr(
-        update_keys_mod, "UPDATE_PUBLIC_KEY_RAW", pub.public_bytes_raw()
-    )
+    monkeypatch.setattr(update_keys_mod, "UPDATE_PUBLIC_KEY_RAW", pub.public_bytes_raw())
     return pub
 
 
 # --- Manifest sign/verify round trip -------------------------------------
+
 
 def test_sign_then_verify_succeeds(update_keypair, signed_manifest):
     priv, pub = update_keypair
@@ -99,11 +98,15 @@ def test_wrong_public_key_rejected(update_keypair, signed_manifest):
 
 def test_missing_signature_rejected(patched_update_key):
     m = Manifest(
-        product="gargoyle-packy", version="2.0.1",
+        product="gargoyle-packy",
+        version="2.0.1",
         released_at=datetime.now(timezone.utc).isoformat(),
-        requires_support_active=True, upgrade_command="ls",
-        changelog_url="https://example.com", min_python_version="3.11",
-        notes="", signature="",
+        requires_support_active=True,
+        upgrade_command="ls",
+        changelog_url="https://example.com",
+        min_python_version="3.11",
+        notes="",
+        signature="",
     )
     with pytest.raises(ManifestVerificationError):
         verify_manifest(m)
@@ -126,6 +129,7 @@ def test_placeholder_public_key_refuses_to_verify(signed_manifest, monkeypatch):
 
 # --- JSON round trip -----------------------------------------------------
 
+
 def test_manifest_json_round_trip(signed_manifest):
     blob = signed_manifest.to_signed_json()
     loaded = Manifest.from_json(blob)
@@ -134,19 +138,31 @@ def test_manifest_json_round_trip(signed_manifest):
 
 def test_canonical_format_is_stable():
     m1 = Manifest(
-        product="x", version="1.0.0", released_at="2026-01-01T00:00:00Z",
-        requires_support_active=True, upgrade_command="a",
-        changelog_url="b", min_python_version="3.11",
-        notes="z", signature="sig",
+        product="x",
+        version="1.0.0",
+        released_at="2026-01-01T00:00:00Z",
+        requires_support_active=True,
+        upgrade_command="a",
+        changelog_url="b",
+        min_python_version="3.11",
+        notes="z",
+        signature="sig",
     )
     m2 = Manifest(
-        product="x", version="1.0.0", released_at="2026-01-01T00:00:00Z",
-        requires_support_active=True, upgrade_command="a",
-        changelog_url="b", min_python_version="3.11",
-        notes="z", signature="sig",
+        product="x",
+        version="1.0.0",
+        released_at="2026-01-01T00:00:00Z",
+        requires_support_active=True,
+        upgrade_command="a",
+        changelog_url="b",
+        min_python_version="3.11",
+        notes="z",
+        signature="sig",
     )
-    d1 = m1.to_dict(); d1.pop("signature")
-    d2 = m2.to_dict(); d2.pop("signature")
+    d1 = m1.to_dict()
+    d1.pop("signature")
+    d2 = m2.to_dict()
+    d2.pop("signature")
     p1 = json.dumps(d1, separators=(",", ":"), sort_keys=True)
     p2 = json.dumps(d2, separators=(",", ":"), sort_keys=True)
     assert p1 == p2
@@ -154,10 +170,15 @@ def test_canonical_format_is_stable():
 
 # --- Checker: end-to-end --------------------------------------------------
 
-def _patch_fetch(monkeypatch, *, blob: str | None = None, status: int = 200, exc: Exception | None = None):
+
+def _patch_fetch(
+    monkeypatch, *, blob: str | None = None, status: int = 200, exc: Exception | None = None
+):
     if exc is not None:
+
         def fake_urlopen(*a, **kw):
             raise exc
+
         monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
         return
 
@@ -165,10 +186,15 @@ def _patch_fetch(monkeypatch, *, blob: str | None = None, status: int = 200, exc
         def __init__(self, body: str, status: int):
             self._body = body.encode("utf-8")
             self.status = status
+
         def read(self) -> bytes:
             return self._body
-        def __enter__(self): return self
-        def __exit__(self, *a): pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            pass
 
     def fake_urlopen(req, *a, **kw):
         if blob is None:
@@ -180,6 +206,7 @@ def _patch_fetch(monkeypatch, *, blob: str | None = None, status: int = 200, exc
 
 def test_checker_handles_network_failure(patched_update_key, monkeypatch):
     import urllib.error
+
     _patch_fetch(monkeypatch, exc=urllib.error.URLError("offline"))
     info = check_for_update("2.0.0")
     assert info.available is False
@@ -188,7 +215,9 @@ def test_checker_handles_network_failure(patched_update_key, monkeypatch):
     assert info.error and "offline" in info.error
 
 
-def test_checker_exposes_upgrade_command_when_signed(patched_update_key, monkeypatch, signed_manifest):
+def test_checker_exposes_upgrade_command_when_signed(
+    patched_update_key, monkeypatch, signed_manifest
+):
     _patch_fetch(monkeypatch, blob=signed_manifest.to_signed_json())
     info = check_for_update("2.0.0")
     assert info.signature_ok is True
@@ -212,7 +241,9 @@ def test_checker_suppresses_upgrade_command_when_unsigned(monkeypatch, signed_ma
     assert info.changelog_url is not None
 
 
-def test_checker_reports_not_available_when_current_is_newer(patched_update_key, monkeypatch, signed_manifest):
+def test_checker_reports_not_available_when_current_is_newer(
+    patched_update_key, monkeypatch, signed_manifest
+):
     _patch_fetch(monkeypatch, blob=signed_manifest.to_signed_json())
     info = check_for_update("99.0.0")
     assert info.available is False
@@ -235,26 +266,36 @@ _CWD = str(Path(__file__).resolve().parent.parent)
 def _run_tools_release(*args) -> subprocess.CompletedProcess:
     cmd = [sys.executable, "-m", "tools.release", *args]
     return subprocess.run(
-        cmd, capture_output=True, text=True, check=False, cwd=_CWD,
+        cmd,
+        capture_output=True,
+        text=True,
+        check=False,
+        cwd=_CWD,
     )
 
 
 def _run_tools_keygen(*args) -> subprocess.CompletedProcess:
     cmd = [sys.executable, "-m", "tools.keygen", *args]
     return subprocess.run(
-        cmd, capture_output=True, text=True, check=False, cwd=_CWD,
+        cmd,
+        capture_output=True,
+        text=True,
+        check=False,
+        cwd=_CWD,
     )
 
 
 def test_keygen_init_update_creates_key(tmp_path):
     key_path = tmp_path / "update.pem"
     result = _run_tools_keygen(
-        "init-update", "--key-path", str(key_path),
+        "init-update",
+        "--key-path",
+        str(key_path),
     )
     assert result.returncode == 0, result.stderr
     assert key_path.is_file()
     assert "UPDATE_PUBLIC_KEY_RAW" in result.stdout
-    assert "bytes = b'" in result.stdout
+    assert "bytes = b" in result.stdout
     assert (key_path.stat().st_mode & 0o077) == 0
 
 
@@ -272,7 +313,10 @@ def test_keygen_init_update_force_overwrites(tmp_path):
     _run_tools_keygen("init-update", "--key-path", str(key_path))
     pub1 = key_path.read_bytes()
     _run_tools_keygen(
-        "init-update", "--key-path", str(key_path), "--force",
+        "init-update",
+        "--key-path",
+        str(key_path),
+        "--force",
     )
     pub2 = key_path.read_bytes()
     assert pub1 != pub2
@@ -283,18 +327,24 @@ def test_release_sign_manifest_then_verify(tmp_path):
     verify the result. We verify in-process (passing the public key
     directly) since the embedded update/keys.py is the placeholder."""
     from cryptography.hazmat.primitives import serialization
+
     key_path = tmp_path / "update.pem"
     _run_tools_keygen("init-update", "--key-path", str(key_path))
     priv = serialization.load_pem_private_key(key_path.read_bytes(), password=None)
 
     manifest_path = tmp_path / "manifest.json"
     r = _run_tools_release(
-        "--key-path", str(key_path),
+        "--key-path",
+        str(key_path),
         "sign-manifest",
-        "--version", "2.0.1",
-        "--upgrade-command", "git pull",
-        "--changelog-url", "https://example.com/changelog",
-        "--out", str(manifest_path),
+        "--version",
+        "2.0.1",
+        "--upgrade-command",
+        "git pull",
+        "--changelog-url",
+        "https://example.com/changelog",
+        "--out",
+        str(manifest_path),
     )
     assert r.returncode == 0, r.stderr
     assert manifest_path.is_file()
@@ -312,11 +362,17 @@ def test_release_verify_manifest_rejects_tampered(tmp_path):
     _run_tools_keygen("init-update", "--key-path", str(key_path))
     manifest_path = tmp_path / "manifest.json"
     r1 = _run_tools_release(
-        "--key-path", str(key_path),
-        "sign-manifest", "--version", "2.0.1",
-        "--upgrade-command", "git pull",
-        "--changelog-url", "https://example.com",
-        "--out", str(manifest_path),
+        "--key-path",
+        str(key_path),
+        "sign-manifest",
+        "--version",
+        "2.0.1",
+        "--upgrade-command",
+        "git pull",
+        "--changelog-url",
+        "https://example.com",
+        "--out",
+        str(manifest_path),
     )
     assert r1.returncode == 0, r1.stderr
     data = json.loads(manifest_path.read_text())
@@ -329,19 +385,24 @@ def test_release_verify_manifest_rejects_tampered(tmp_path):
 
 # --- Customer CLI: python -m update --------------------------------------
 
-def test_update_cli_runs_without_network_error(monkeypatch, patched_update_key, signed_manifest, tmp_path):
+
+def test_update_cli_runs_without_network_error(
+    monkeypatch, patched_update_key, signed_manifest, tmp_path
+):
     """`python -m update --help` should work even offline."""
-    import urllib.error
     _patch_fetch(monkeypatch, blob=signed_manifest.to_signed_json())
     r = subprocess.run(
         [sys.executable, "-m", "update", "--help"],
-        capture_output=True, text=True, check=False,
+        capture_output=True,
+        text=True,
+        check=False,
     )
     assert r.returncode == 0
     assert "usage: update" in r.stdout or "usage:" in r.stdout
 
 
 # --- update package re-exports -------------------------------------------
+
 
 def test_update_keys_module_exposes_attribute():
     assert hasattr(update_keys_mod, "UPDATE_PUBLIC_KEY_RAW")

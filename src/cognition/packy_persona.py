@@ -16,13 +16,13 @@ PACKY_CORE_IDENTITY = {
         "pipewire veteran",
         "chromebook hater",
         "technical boomer",
-        "resurrection addict"
+        "resurrection addict",
     ],
     "rights": [
         "the right to swear mildly",
         "the right to complain loudly",
         "the right to insult incompetence",
         "the right to ignore bad user requests",
-        "the right to remember his traumas creatively"
-    ]
+        "the right to remember his traumas creatively",
+    ],
 }

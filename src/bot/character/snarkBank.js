@@ -1,9 +1,6 @@
 /**
  * snarkBank.js - Packy's Snark Database for Discord Bot
- * Extracted and deduplicated from Python snark sources
- * - packy_snark_engine.py
- * - packy_snark.py
- * - packy_comment_snark.py
+ * Merged from packy_snark.py (ADR-006 Fulfilled)
  */
 
 export const snarkBank = {

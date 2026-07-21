@@ -10,11 +10,8 @@ Hermetic: no Stripe, no SMTP. Validates:
 
 from __future__ import annotations
 
-import base64
 import json
-import os
 import sys
-import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -27,11 +24,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 # --- SalesConfig ---------------------------------------------------------
 
+
 def test_sales_config_requires_secrets(monkeypatch, tmp_path):
     monkeypatch.setenv("SALES_DB_PATH", str(tmp_path / "sales.db"))
     # Missing STRIPE_SECRET_KEY etc. — should refuse to boot.
     with pytest.raises(SystemExit) as exc:
         from sales.config import load_config
+
         load_config()
     assert "STRIPE_SECRET_KEY" in str(exc.value)
 
@@ -57,6 +56,7 @@ def test_sales_config_loads_with_full_env(monkeypatch, tmp_path):
     monkeypatch.setenv("SALES_DB_PATH", str(tmp_path / "sales.db"))
 
     from sales.config import load_config
+
     cfg = load_config()
     assert cfg.license_product_id == "gargoyle-packy"
     assert cfg.license_product_version == "2.0.0"
@@ -83,6 +83,7 @@ def test_tier_to_price_for_packy(monkeypatch, tmp_path):
     monkeypatch.setenv("SALES_DB_PATH", str(tmp_path / "sales.db"))
 
     from sales.config import load_config, tier_to_price
+
     cfg = load_config()
     assert tier_to_price(cfg, "indie") == "price_indie"
     assert tier_to_price(cfg, "pro") == "price_pro"
@@ -91,8 +92,10 @@ def test_tier_to_price_for_packy(monkeypatch, tmp_path):
 
 # --- Emailer: builds Packy subject + body --------------------------------
 
+
 def test_emailer_subject_and_body_mention_packy():
     from sales.emailer import FakeEmailer
+
     e = FakeEmailer()
     e.send_license(
         to_email="customer@example.com",
@@ -120,8 +123,10 @@ def test_emailer_subject_and_body_mention_packy():
 
 # --- DB: writes/reads ----------------------------------------------------
 
+
 def test_db_insert_and_find_by_license_id(tmp_path):
     from sales.db import LicenseDB, LicenseRow
+
     db = LicenseDB(tmp_path / "sales.db")
     row = LicenseRow(
         license_id="KFG-PROD-AB12CD34",
@@ -146,6 +151,7 @@ def test_db_insert_and_find_by_license_id(tmp_path):
 
 def test_db_idempotent_on_duplicate_session(tmp_path):
     from sales.db import DuplicateSessionError, LicenseDB, LicenseRow
+
     db = LicenseDB(tmp_path / "sales.db")
     common = dict(
         license_id="KFG-PROD-IDEM",
@@ -168,6 +174,7 @@ def test_db_idempotent_on_duplicate_session(tmp_path):
 
 # --- LicenseSigner: end-to-end with Packy product id ---------------------
 
+
 def test_signer_uses_gargoyle_packy_product(monkeypatch, tmp_path):
     """Full round-trip: load a private key, sign a license for the
     Packy product, verify the signed blob against the matching public key."""
@@ -187,18 +194,19 @@ def test_signer_uses_gargoyle_packy_product(monkeypatch, tmp_path):
 
     # Patch the embedded product public key so the loader can verify.
     import license.keys as license_keys_mod
-    monkeypatch.setattr(
-        license_keys_mod, "PUBLIC_KEY_RAW", priv.public_key().public_bytes_raw()
-    )
+
+    monkeypatch.setattr(license_keys_mod, "PUBLIC_KEY_RAW", priv.public_key().public_bytes_raw())
 
     signer = LicenseSigner(key_path)
-    result = signer.sign(SignRequest(
-        tier="pro",
-        customer_name="Acme",
-        customer_email="ops@acme.com",
-        product_id="gargoyle-packy",
-        product_version="2.0.0",
-    ))
+    result = signer.sign(
+        SignRequest(
+            tier="pro",
+            customer_name="Acme",
+            customer_email="ops@acme.com",
+            product_id="gargoyle-packy",
+            product_version="2.0.0",
+        )
+    )
 
     # Write to disk and verify via the customer-side loader
     license_path = tmp_path / "license.json"
@@ -212,6 +220,7 @@ def test_signer_uses_gargoyle_packy_product(monkeypatch, tmp_path):
     # The loader checks signature against the embedded public key (which
     # we patched). It should pass.
     from license import load as load_license
+
     loaded = load_license(path=license_path)
     assert loaded.claims.product == "gargoyle-packy"
     assert loaded.claims.tier == "pro"

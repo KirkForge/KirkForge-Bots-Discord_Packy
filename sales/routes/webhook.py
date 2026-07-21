@@ -37,7 +37,9 @@ def mount(app, *, cfg: SalesConfig, db: LicenseDB, signer: LicenseSigner, emaile
 
         try:
             event = stripe.Webhook.construct_event(
-                body, sig_header, cfg.stripe_webhook_secret,
+                body,
+                sig_header,
+                cfg.stripe_webhook_secret,
             )
         except ValueError:
             # body wasn't valid JSON
@@ -54,7 +56,11 @@ def mount(app, *, cfg: SalesConfig, db: LicenseDB, signer: LicenseSigner, emaile
 
         session = event.data.object
         return await _handle_completed(
-            cfg=cfg, db=db, signer=signer, emailer=emailer, session=session,
+            cfg=cfg,
+            db=db,
+            signer=signer,
+            emailer=emailer,
+            session=session,
         )
 
     app.include_router(router)
@@ -89,10 +95,14 @@ async def _handle_completed(*, cfg, db, signer, emailer, session) -> dict:
     # when we created the Checkout session; that's the trusted path.
     tier = _get(session, "metadata", "tier")
     if not tier:
-        line_items_data = _get(session, "line_items", "data", default=[])
-        # line_items_data is a list, so we can't chain the same way
+        # Resolve price_id from line_items (object or dict)
         if isinstance(session, dict):
-            price_id = (session.get("line_items") or {}).get("data", [{}])[0].get("price", {}).get("id", "")
+            price_id = (
+                (session.get("line_items") or {})
+                .get("data", [{}])[0]
+                .get("price", {})
+                .get("id", "")
+            )
         else:
             li = getattr(session, "line_items", None)
             if li and getattr(li, "data", None):
@@ -145,10 +155,7 @@ async def _handle_completed(*, cfg, db, signer, emailer, session) -> dict:
         logger.info("concurrent webhook for %s, skipping", session_id)
         return {"received": True, "handled": True, "license_id": result.license_id}
 
-    portal_url = (
-        cfg.success_url.rsplit("/", 1)[0]
-        + f"/portal?license_id={result.license_id}"
-    )
+    portal_url = cfg.success_url.rsplit("/", 1)[0] + f"/portal?license_id={result.license_id}"
     try:
         emailer.send_license(
             to_email=customer_email,
@@ -165,7 +172,9 @@ async def _handle_completed(*, cfg, db, signer, emailer, session) -> dict:
 
     logger.info(
         "license signed: tier=%s license_id=%s customer=%s",
-        tier, result.license_id, customer_email,
+        tier,
+        result.license_id,
+        customer_email,
     )
     return {"received": True, "handled": True, "license_id": result.license_id}
 

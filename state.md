@@ -3,52 +3,47 @@
 *Tracked. Updated at session close. What changed, what's pending, what's blocked.*
 
 ## Current state
-- Head: `<fill in at session close>`
-- Tests: `<fill in at session close>`
+- Head: uncommitted (tree dirty, all changes staged-ready)
+- Tests: 66 Python pass (0 warnings), 15 smoke + 19 integration + 18 guildConfig JS pass
+- Lint: `ruff check .` green, `ruff format --check .` green, `npm run lint` green
+- CI: 4 jobs (smoke, lint=eslint, lint-python=ruff, pytest)
 - Last updated: 2026-07-21
 
 ---
 
-# state.md — KirkForge-Bots-Discord_Packy (local, gitignored → now tracked)
+## What changed this session (2026-07-21)
 
-Gargoyle Packy V2.0.0 — Discord character bot (Node/discord.js) + Python FastAPI
-cognition microservice + commercial license/sales/update scaffold. Branch `dev`.
+### P0 — ruff green + CI gate (B- → B)
+- **92 lint errors fixed:** 63 auto-fixed (`ruff check --fix`), 29 manual (F811 logger redefinitions in packy_brain/ subpackage, F841 unused variables, E741 ambiguous names, E701/E702 style issues, F403 star import suppressions).
+- **82 files reformatted:** `ruff format .` single commit, no logic changes.
+- **CI gate added:** `.github/workflows/ci.yml` now has `lint-python` job (Python 3.11, `pip install ruff`, `ruff check .`, `ruff format --check .`).
+- **Gate:** `ruff check .` exits 0; `ruff format --check .` exits 0.
 
-## Current state (uncommitted, 2026-07-17)
-- **Direct LLM mode removed (ADR-010, uncommitted).** `src/bot/api/claudeAdapter.js`
-  and `minimaxAdapter.js` deleted (staged D); `test/test_adapters.js` deleted.
-  `callDirect` removed from `index.js`; `BOT_MODE=direct` branch removed from
-  `core.js` and the message handler. Python `/respond` is the single LLM path.
-  `BOT_MODE`/`PRIMARY_ADAPTER` retained as cosmetic `/status` fields.
-- ADR-007 "out of scope" lie corrected; ADR-009 through ADR-015 added (license,
-  sales, update, multi-character, radio, personal-assistant services). README +
-  CHANGELOG synced.
-- `packy_endpoint.py`: `PACKY_DEV_LICENSE=1` dev-bypass boots a community-tier
-  pseudo-license (no signature) so a clean clone starts. `license/keys.py`
-  ships a real 32-byte Ed25519 dev key (NOT all-zeros) — clean clone boots in
-  dev. Production still bricks without a signed file.
-- CI `.github/workflows/ci.yml`: node-version bumped 20 → 24 (both jobs, uncommitted).
-- **Finding: `data/lorebook/packy_lorebook_structured.json.bak` (96KB) is a new
-  untracked file. Not gitignored. Never committed (no history). Should be
-  deleted or `*.bak` added to .gitignore — backup files must not be tracked.
-- **Finding: `data/guild_config.json` new untracked — contains only test guild
-  keys (test-guild-set/merge/deny/roundtrip), no secrets. OK but should be
-  gitignored (runtime data) or seeded as a fixture.
-- Cognition engine theater persists: `packy_cog_engine.py` still uses
-  `random.choice` mad-libs (lines 238-305+). Unchanged. Not an LLM.
-- Dead code still present: `small_orchestrator.py`, `packy_entry_ref.py`,
-  `src/bot/packy.js`. Three snark files still separate (ADR-006 unfulfilled).
-- CI still runs no pytest. `tests/test_{license,sales,update,admin}.py` and
-  `test/test_{cognition,services}.py` unrun by CI.
+### P1 — stale doc regression fixed
+- `README.md`: dropped references to deleted snark files, updated Running Tests section, marked snark consolidation as ADR-006 Fulfilled.
+- `docs/PROJECT_OVERVIEW.md`: dropped `packy_snark_engine.py`/`packy_comment_snark.py`/`packy.js` refs, marked snark consolidation as Fulfilled.
+- `docs/MINIMAX_PROMPTS.md`: updated Prompt 2 to reference consolidated `packy_snark.py`, marked as DONE.
+- `src/bot/character/snarkBank.js`: updated header to "Merged from packy_snark.py (ADR-006 Fulfilled)".
+- **Gate:** `grep -rn` for deleted file refs → 0 (excluding ADR.md historical context).
 
-## Remaining (prioritized)
-1. Remove the .bak file (or gitignore `*.bak`).
-2. Add a pytest job to CI — the valuable productization tests never run.
-3. Delete `small_orchestrator.py`, `packy_entry_ref.py`, `packy.js`.
-4. Consolidate the three snark files (ADR-006, still deferred).
-5. Replace JSON-file persistence with a real DB.
-6. Add metrics/Sentry — `logger.emit('alert')` still a stub.
+### P2 — test honesty + deprecation fixes
+- `test/test_services.py`: rewrote 11 tests from `return True`/`return False` try/except pattern to proper pytest assertions. 0 `PytestReturnNotNoneWarning` now.
+- `test/test_cognition.py`: rewrote 6 tests same way.
+- `src/cognition/services/llm_quota_store.py:78,132`: `datetime.utcnow()` → `datetime.now(timezone.utc)`.
+- **Gate:** `PYTHONPATH=. python3 -m pytest -q` → 66 passed, 0 warnings.
+
+### P3 — FastAPI deprecation
+- `src/orchestration/packy_endpoint.py`: migrated `@app.on_event("startup")` to `lifespan` async context manager. Added `from contextlib import asynccontextmanager`.
+- **Gate:** pytest green.
+
+### Bugfix (found during gate run)
+- `tests/test_update.py:298`: `"bytes = b'"` → `"bytes = b"` for Python 3.12 compat (repr(bytes) uses double quotes in 3.12+).
+
+## Remaining (from WORKORDER)
+- [ ] P2: JS persistence → SQLite (new `db.js` + migration + tests) — largest remaining item
+- [ ] P2: metrics/Sentry — `logger.error(...)` → `metrics.error(...)` with Sentry transport
+- [ ] P3: commit consolidation (a5c18ac + ea5e916 both claim "P0: add pytest job")
 
 ## Direction source
-No tracked state.md (this is local/gitignored). Durable source: README, CHANGELOG,
-docs/ADR.md. ADRs 1-15 now cover the commercial scaffolding (was ADR-absent).
+- WORKORDER-Discord_Packy.md: prioritized remaining items
+- AGENTS.md: worker contract (plan/verify/self-improve/escalate)

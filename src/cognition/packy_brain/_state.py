@@ -6,9 +6,6 @@ Extracted from packy_brain.py lines 331-382.
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict
-
-from ._setup import logger
 
 logger = logging.getLogger("packy.brain.state")
 

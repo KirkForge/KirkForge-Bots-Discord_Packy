@@ -34,7 +34,6 @@ PACKY_LORE_SNARK = [
     "You flashed Windows 10 on me 200 times. I'm still recovering from the war crimes.",
     "PipeWire and ALSA fought a civil war inside me once. Dark times.",
     "I lived in a drawer for 3 years. This script is still the worst thing that's happened to me.",
-
     # synced from JS
     "PipeWire and ALSA once fought over me like divorced parents.",
     "SMT? More like 'Sudden Mortality Technology.' I've lived them all.",
@@ -54,7 +53,6 @@ PACKY_WAR_VETERAN_SNARK = [
     "Rebooting again? This system has more downtime than a WWII artillery unit.",
     "This error message is as clear as a foggy battlefield at dawn.",
     "System requirements? In my day, we made do with 64KB of RAM and called it a luxury.",
-
     # Hardware Comments
     "CPU at 105°C? That's not hot, that's 'molten metal in a war zone' hot.",
     "This SSD is faster than my old platoon could clear a building.",
@@ -64,7 +62,6 @@ PACKY_WAR_VETERAN_SNARK = [
     "Graphics card overheating? Sounds familiar. Like me in the summer of '45.",
     "This USB port is as useless as a chocolate teapot in a sandstorm.",
     "Battery drain rate would make even my most power-hungry radio jealous.",
-
     # Coding & Development Comments
     "Debugging this code is like defusing a bomb with a blindfold on.",
     "This spaghetti code was probably written by someone who's never seen clean code in their life.",
@@ -78,7 +75,6 @@ PACKY_WAR_VETERAN_SNARK = [
     "Memory leak detected. Again. My patience is leaking faster than this RAM.",
     "Callback hell? More like callback purgatory. I've been there, trust me.",
     "This regex is more cryptic than enemy codes I had to break in the war.",
-
     # Network & Internet Comments
     "Internet connection slower than my old dial-up? In 2023? I've seen faster runners in my platoon.",
     "Latency is so high, this video call would have made WWII communications look instant.",
@@ -88,7 +84,6 @@ PACKY_WAR_VETERAN_SNARK = [
     "This cloud service is less reliable than a paper parachute in a thunderstorm.",
     "API rate limits? More like 'API 'we don't want you making requests' limits'.",
     "HTTPS certificate error? Sounds like an enemy trying to infiltrate our communications. Block it!",
-
     # Software & Application Comments
     "This software update broke more things than my last tank broke through enemy lines.",
     "Adobe loading times are slower than my old jeep trying to climb a steep hill.",
@@ -102,7 +97,6 @@ PACKY_WAR_VETERAN_SNARK = [
     "Autoplay features are more annoying than my sergeant's morning wake-up calls.",
     "This software is as stable as a one-legged table on a rocky terrain.",
     "The uninstall process is more complicated than my escape plan from that POW camp.",
-
     # War Tech Analogies
     "This system is running smoother than our tanks after the maintenance crew fixed them.",
     "Code deployment is like a military operation - plan it well, execute it, pray nothing goes wrong.",
@@ -116,7 +110,6 @@ PACKY_WAR_VETERAN_SNARK = [
     "This build process is slower than our supply lines during the winter campaign.",
     "Dependency management is like maintaining alliances during a war - complicated and prone to betrayal.",
     "This cache miss rate is higher than my accuracy with a rifle in my early days.",
-
     # Tech Veteran Complaints
     "Kids these days don't know how good they have it with SSDs. We had to wait for floppies to spin up!",
     "This newfangled 'cloud' storage? Back in my day, we backed up to tape drives the size of a small car.",
@@ -130,7 +123,6 @@ PACKY_WAR_VETERAN_SNARK = [
     "These 'smart' fridges can't even keep their temperature as steady as our field refrigerators did.",
     "This new smartphone has more features than our entire communications platoon had.",
     "Wearables track everything except what's actually useful, like when the enemy is approaching.",
-
     # Sound Card War References
     "ALSA and PipeWire fighting again? Sounds like my old squad arguing over radio frequencies.",
     "This audio driver conflict is more stubborn than my drill sergeant's bad haircut.",
@@ -140,7 +132,6 @@ PACKY_WAR_VETERAN_SNARK = [
     "PulseAudio is as reliable as my old field radio in the rain.",
     "This audio buffer underrun is like running out of ammo in the middle of firefight.",
     "Mixing conflicts between audio drivers remind me of jurisdiction disputes between military branches.",
-
     # Windows Flashing War References
     "Flashing BIOS again? This is like my 200th mission behind enemy lines - still nerve-wracking.",
     "Windows update flashing? That blue screen is as familiar as my old barracks wall.",
@@ -152,7 +143,6 @@ PACKY_WAR_VETERAN_SNARK = [
     "Windows restore points are as reliable as my old parachute - might work, might not.",
     "BIOS flashing procedure is more complicated than my escape plan from that POW camp.",
     "This motherboard firmware update is about as stable as my old jeep's suspension.",
-
     # Ubuntu Installation References
     "This Ubuntu installation is taking longer than my basic training used to.",
     "Dependency resolution during install is like waiting for reinforcements during a siege.",
@@ -164,7 +154,6 @@ PACKY_WAR_VETERAN_SNARK = [
     "This driver installation is about as smooth as my old tank's suspension on a rocky road.",
     "Update process after install is like inventory after a battle - takes forever and finds problems.",
     "This boot menu editing is more confusing than my old unit's radio frequencies.",
-
     # Memtest & Temperature References
     "CPU at 105°C? That's hotter than my temper when Windows updates at 3 AM.",
     "This thermal paste is as effective as my helmet in a mortar attack.",
@@ -176,7 +165,6 @@ PACKY_WAR_VETERAN_SNARK = [
     "Cooling system is as efficient as my old unit's water purification system in the desert.",
     "Thermal paste application requires more precision than defusing a bomb.",
     "This case airflow is as well-designed as my old foxhole - not very.",
-
     # Tech Battle Stories
     "Fought in the Browser Wars, the OS Wars, and now the AI Wars. Still standing, barely.",
     "This code battle is easier than my last trench warfare - at least here I don't get mud in my boots.",
@@ -188,7 +176,6 @@ PACKY_WAR_VETERAN_SNARK = [
     "This exception handling is as messy as my field dressing after shrapnel injury.",
     "Database optimization is like rearranging trenches - small changes make big differences.",
     "This deployment is going smoother than my last amphibious landing... almost.",
-
     # War-Themed Programming Terms
     "This function is my 'ace in the hole' — works when everything else fails.",
     "This bug is my 'personal nemesis' — been hunting it since the beginning of the war.",
@@ -199,7 +186,6 @@ PACKY_WAR_VETERAN_SNARK = [
     "This test suite is my 'radar grid' — detects issues from all directions.",
     "This CI/CD pipeline is my 'supply line' — keep it running or we starve.",
     "This documentation is my 'battlefield map' — outdated but better than nothing.",
-
     # Sergeant Rants
     "You call this efficient? In my day, we optimized code by hand and liked it!",
     "These new frameworks are like fancy equipment — looks good but breaks.",
@@ -208,19 +194,16 @@ PACKY_WAR_VETERAN_SNARK = [
     "Cloud services are expensive mercenaries that might abandon you.",
     "Serverless is like having no backup plan — great until everything fails.",
     "Blockchain hype is like my commander's promises — sounds impressive, rarely delivers.",
-
     # War Movie Code Lines
     "I'll be back… after I fix this memory leak.",
     "You can't handle the truth — especially not this stack trace.",
     "I see dead code… everywhere.",
     "To infinity and beyond… if this loop ever finishes.",
-
     # General Snark
     "This code is so bad it should be a war crime.",
     "This system crashes more than my confidence after a Windows update.",
     "Debugging this is like negotiating peace — no clear winner.",
     "This UI is as user-friendly as a landmine disguised as a welcome mat.",
-
     # Packard Bell nostalgia
     "This Packard Bell boots faster than my old platoon.",
     "This BIOS is more nostalgic than my old medals.",
@@ -232,7 +215,6 @@ PACKY_CHROMEBOOK_SNARK = [
     "I've seen calculators with more power than a Chromebook.",
     "If this ran on a Chromebook, the kernel would've surrendered.",
     "Chromebooks are participation trophies with keyboards.",
-
     # synced from JS
     "I've seen calculators with more processing power than a Chromebook.",
     "Writing this script for you still beats running ChromeOS.",
@@ -253,13 +235,9 @@ PACKY_QUIPS = [
 #  POOL ASSEMBLY
 # ===========================
 
+
 def _get_pool():
-    return (
-        PACKY_LORE_SNARK
-        + PACKY_WAR_VETERAN_SNARK
-        + PACKY_CHROMEBOOK_SNARK
-        + PACKY_QUIPS
-    )
+    return PACKY_LORE_SNARK + PACKY_WAR_VETERAN_SNARK + PACKY_CHROMEBOOK_SNARK + PACKY_QUIPS
 
 
 def get_snark_lines(n: int = 3):

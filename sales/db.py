@@ -106,11 +106,18 @@ class LicenseDB:
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
-                        row.license_id, row.tier, row.customer_name,
-                        row.customer_email, row.stripe_session_id,
-                        row.signed_at, row.support_until, row.seats,
-                        row.features_json, row.license_json,
-                        row.amount_cents, row.currency,
+                        row.license_id,
+                        row.tier,
+                        row.customer_name,
+                        row.customer_email,
+                        row.stripe_session_id,
+                        row.signed_at,
+                        row.support_until,
+                        row.seats,
+                        row.features_json,
+                        row.license_json,
+                        row.amount_cents,
+                        row.currency,
                     ),
                 )
             except sqlite3.IntegrityError as exc:

@@ -1,7 +1,9 @@
-import random, json
+import random
+import json
 from pathlib import Path
 
 _STORIES_PATH = Path(__file__).resolve().parent.parent.parent / "data" / "packy_war_stories.json"
+
 
 def pick_war_story(force_id=None, severity=None):
     with open(_STORIES_PATH, encoding="utf-8") as f:
@@ -12,7 +14,11 @@ def pick_war_story(force_id=None, severity=None):
 
     if severity:
         # Data uses mood_required; fall back to tag match for legacy severity values
-        candidates = [s for s in all_stories if s.get("mood_required") == severity or severity in s.get("tags", [])]
+        candidates = [
+            s
+            for s in all_stories
+            if s.get("mood_required") == severity or severity in s.get("tags", [])
+        ]
         if not candidates:
             candidates = all_stories
     else:

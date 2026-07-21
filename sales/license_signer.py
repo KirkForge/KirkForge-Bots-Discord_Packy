@@ -14,7 +14,6 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
 
@@ -27,17 +26,17 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class SignRequest:
-    tier: str                       # "indie" | "pro" | "enterprise"
+    tier: str  # "indie" | "pro" | "enterprise"
     customer_name: str
     customer_email: str
-    product_id: str                 # "the-specialist"
-    product_version: str            # "1.0.0"
+    product_id: str  # "the-specialist"
+    product_version: str  # "1.0.0"
 
 
 @dataclass
 class SignResult:
     license_id: str
-    license_json: str               # signed, ready to write to disk
+    license_json: str  # signed, ready to write to disk
     signed_at: datetime
     support_until: datetime
     seats: int
@@ -49,16 +48,16 @@ class LicenseSigner:
 
     def __init__(self, private_key_path: Path):
         if not private_key_path.is_file():
-            raise SystemExit(
-                f"FATAL: license private key not found at {private_key_path}"
-            )
+            raise SystemExit(f"FATAL: license private key not found at {private_key_path}")
         try:
             mode = private_key_path.stat().st_mode & 0o777
             if mode & 0o077:
                 logger.warning(
                     "License private key %s has permissive mode %04o — "
                     "should be 0600. Run: chmod 600 %s",
-                    private_key_path, mode, private_key_path,
+                    private_key_path,
+                    mode,
+                    private_key_path,
                 )
         except OSError:
             pass
@@ -66,9 +65,7 @@ class LicenseSigner:
             key_data = fh.read()
         key = load_pem_private_key(key_data, password=None)
         if not isinstance(key, Ed25519PrivateKey):
-            raise SystemExit(
-                f"FATAL: {private_key_path} is not an Ed25519 private key"
-            )
+            raise SystemExit(f"FATAL: {private_key_path} is not an Ed25519 private key")
         self._key = key
 
     def sign(self, req: SignRequest) -> SignResult:
@@ -91,9 +88,9 @@ class LicenseSigner:
         )
         # Mirror the test conftest signing format: canonical JSON, no whitespace,
         # sorted keys, then Ed25519 over the bytes.
-        payload = json.dumps(
-            claims.to_dict(), separators=(",", ":"), sort_keys=True
-        ).encode("utf-8")
+        payload = json.dumps(claims.to_dict(), separators=(",", ":"), sort_keys=True).encode(
+            "utf-8"
+        )
         sig = self._key.sign(payload)
         out = claims.to_dict()
         out["signature"] = base64.b64encode(sig).decode("ascii")

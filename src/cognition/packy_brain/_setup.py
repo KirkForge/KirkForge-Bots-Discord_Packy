@@ -11,13 +11,11 @@ Extracted from the original packy_brain.py (lines 1-106). This file is the
 
 from __future__ import annotations
 
-import json
 import logging
 import random
-import re
 import sys as _sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import List
 
 logger = logging.getLogger("packy.brain")
 if not logger.handlers:
@@ -85,7 +83,7 @@ def _default_get_snark_lines(n: int = 3) -> List[str]:
 def _default_generate_script(kind: str, task_description: str) -> str:
     header = (
         "# -------------------------------------------------------------\n"
-        f"# Packy War-Story: {random.choice(['Thermal Martyrdom','BIOS Flashback','Pizza Incident'])}\n"
+        f"# Packy War-Story: {random.choice(['Thermal Martyrdom', 'BIOS Flashback', 'Pizza Incident'])}\n"
         f"# Task: {task_description}\n"
         "# Packy: auto-generated fallback header\n"
         "# -------------------------------------------------------------\n\n"

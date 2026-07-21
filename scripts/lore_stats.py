@@ -9,7 +9,6 @@ Default: data/lorebook/packy_lorebook_structured.json
 import json
 import sys
 import os
-from collections import Counter
 
 
 def print_lore_stats(lorebook_path):
@@ -19,12 +18,11 @@ def print_lore_stats(lorebook_path):
     Args:
         lorebook_path: Path to the lorebook JSON file
     """
-    with open(lorebook_path, 'r', encoding='utf-8') as f:
+    with open(lorebook_path, "r", encoding="utf-8") as f:
         lorebook = json.load(f)
 
     # Extract data
-    categories = lorebook.get('categories', {})
-    stats = lorebook.get('stats', {})
+    categories = lorebook.get("categories", {})
 
     # Calculate stats
     total_categories = len(categories)
@@ -44,10 +42,7 @@ def print_lore_stats(lorebook_path):
     print("\nEntries per Category (sorted by count):")
     print("-" * 60)
 
-    category_counts = [
-        (cat, len(entries))
-        for cat, entries in categories.items()
-    ]
+    category_counts = [(cat, len(entries)) for cat, entries in categories.items()]
     category_counts.sort(key=lambda x: x[1], reverse=True)
 
     for category, count in category_counts:
@@ -62,10 +57,7 @@ def main():
     # Determine paths
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-    lorebook_path = os.path.join(
-        project_root,
-        'data/lorebook/packy_lorebook_structured.json'
-    )
+    lorebook_path = os.path.join(project_root, "data/lorebook/packy_lorebook_structured.json")
 
     # Get lorebook path from command line if provided
     if len(sys.argv) > 1:
@@ -74,5 +66,5 @@ def main():
     print_lore_stats(lorebook_path)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

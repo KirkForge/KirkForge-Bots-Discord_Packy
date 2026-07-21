@@ -18,8 +18,11 @@ def main() -> None:
     cfg = load_config()
     app = create_app(config=cfg)
     uvicorn.run(
-        app, host=cfg.bind, port=cfg.port,
-        log_level="info", access_log=False,
+        app,
+        host=cfg.bind,
+        port=cfg.port,
+        log_level="info",
+        access_log=False,
     )
 
 

@@ -29,8 +29,14 @@ data/pending_lore/
 # LLM tooling (never committed)
 .claude/
 CLAUDE.md
-AGENTS.md
-state.md
+
+# --- Agent work files (per-session, not tracked) ---
+# NOTE: AGENTS.md and state.md (repo ROOT) are TRACKED — do not gitignore them.
+workplan.md
+lessons.md
+# Subdirectory state.md docs (pre-existing, never tracked) stay ignored:
+src/bot/commands/state.md
+src/bot/commands/handlers/state.md
 
 # Security
 *.pem

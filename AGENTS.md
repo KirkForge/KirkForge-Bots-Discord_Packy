@@ -137,10 +137,10 @@ cd /path/to/GargoylePackyV2 && git add data/guild_config.json data/chaos_state.j
 - Run the gates before every commit. Paste the actual output (not paraphrased). A green claim requires the pasted output + the head SHA. "It passed" is not evidence.
 - Gates for this repo (DUAL stack — run both):
   - Test (Python): `pytest` (`testpaths = ["test", "tests"]`)
-  - Test (Node): `npm test` (smoke); `npm run test:all` (smoke + integration: `test:integration/rateLimiter.test.js` + `test:integration/guildConfig.test.js`)
+  - Test (Node): `npm test` (smoke); `npm run test:all` (smoke + integration: `test/integration/*.test.js`)
   - Lint (Node): `npm run lint` (`eslint src/`)
-  - Lint (Python): `uv run ruff check` (`target-version py311`, `line-length 100`, `E402` ignored for sys.path pattern)
-  - Fmt (Python): `uv run ruff format --check` (`uv run ruff format` to write)
+  - Lint (Python): `ruff check .` (`target-version py311`, `line-length 100`, `E402` ignored for sys.path pattern)
+  - Fmt (Python): `ruff format --check .` (`ruff format .` to write)
   - Fmt (Node): n/a (no prettier configured in this repo)
   - Typecheck: n/a (no `tsc`/`mypy` configured in this repo — `tsconfig.json` is gitignored/empty placeholder)
 - Do not rewrite tests to make them pass. Fix the root cause.

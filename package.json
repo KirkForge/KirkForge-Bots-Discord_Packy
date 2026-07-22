@@ -10,7 +10,7 @@
     "register": "node src/bot/commands/register.js",
     "lint": "eslint src/",
     "test": "node test/smoke.js",
-    "test:integration": "node test/integration/rateLimiter.test.js && node test/integration/guildConfig.test.js",
+    "test:integration": "node test/integration/rateLimiter.test.js && node test/integration/guildConfig.test.js && node test/integration/chaos.test.js",
     "test:all": "npm test && npm run test:integration"
   },
   "dependencies": {

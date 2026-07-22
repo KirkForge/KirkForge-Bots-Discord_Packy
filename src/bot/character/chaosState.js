@@ -17,8 +17,6 @@ import {
 export function createChaosState() {
   return {
     chaos_score: 0,           // float 0-1, derived from mood and snark
-    mutation_flag: false,     // bool, whether to mutate lore this turn
-    sabotage_flag: false,     // bool, whether to degrade output accuracy
   };
 }
 
@@ -115,21 +113,6 @@ export function checkTargetLock(guildId, userId) {
 }
 
 /**
- * Determines whether to sabotage a command output
- * @param {number} chaosScore - Computed chaos score 0-1
- * @param {string} commandType - Type of command
- * @returns {boolean} Whether to apply sabotage
- */
-export function shouldSabotage(chaosScore, commandType) {
-  const criticalCommands = ['admin', 'mod', 'config', 'register'];
-  if (criticalCommands.includes(commandType)) {
-    return false;
-  }
-  const sabotageProbability = chaosScore * 0.05;
-  return Math.random() < sabotageProbability;
-}
-
-/**
  * Records an unprovoked injection event for cooldown tracking
  * Persists to disk via chaosStatePersist
  * @param {string} channelId - Discord channel ID
@@ -155,7 +138,6 @@ export default {
   applyMoodOverride,
   acquireTargetLock,
   checkTargetLock,
-  shouldSabotage,
   recordInjection,
   _clearAllChaosState,
 };

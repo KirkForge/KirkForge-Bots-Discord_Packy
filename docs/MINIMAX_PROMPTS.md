@@ -210,15 +210,11 @@ PackyState needs these additions:
 - chaos_score: float (0-1, derived from mood + snark)
 - target_user_id: string|null
 - target_lock_expiry: number|null (unix timestamp)
-- mutation_flag: bool
-- sabotage_flag: bool  
 - last_injection_ts: number (unix timestamp)
 
-Chaos modules:
+Chaos modules (per ADR-008, modules 3-5 descoped):
 1. Unprovoked commentary: fires based on chaos_score, 1 per channel per 3 minutes max
 2. Mood swing override: FURIOUS shortens response, CALM allows rare clarity
-3. Target lock: fixate on a user for 5-20 minutes, weighted by interaction frequency
-4. Sabotage: low probability, only non-critical non-admin commands
 
 Write the module with these exports:
 - computeChaosScore(mood, snarkLevel) → float

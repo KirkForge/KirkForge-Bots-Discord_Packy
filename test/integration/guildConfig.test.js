@@ -1,13 +1,10 @@
 #!/usr/bin/env node
 /**
  * Guild config round-trip integration tests
- * Tests save/load/get/set lifecycle using a temp file path.
+ * Tests save/load/get/set lifecycle using SQLite backend.
  * Does NOT require Discord API.
  */
 
-import fs from 'fs/promises';
-import path from 'path';
-import os from 'os';
 import {
   getGuildConfig,
   setGuildConfig,
@@ -69,7 +66,7 @@ async function testChannelAllowListEmptyDeny() {
   assert(!isChannelAllowed('test-guild-deny', 'channel-2'), 'empty list denies channel-2');
 
   const cfg = getGuildConfig('test-guild-deny');
-  cfg.allowedChannels.push('channel-1');
+  setGuildConfig('test-guild-deny', { allowedChannels: ['channel-1'] });
   assert(isChannelAllowed('test-guild-deny', 'channel-1'), 'explicit channel allowed');
   assert(!isChannelAllowed('test-guild-deny', 'channel-42'), 'non-listed channel still denied');
 }
@@ -80,16 +77,9 @@ async function testSaveLoadRoundTrip() {
   setGuildConfig('test-guild-roundtrip', { botMuted: true, chaosEnabled: false });
   await saveGuildConfigs();
 
-  const configPath = path.join(process.cwd(), 'data', 'guild_config.json');
-  let fileContent;
-  try {
-    fileContent = await fs.readFile(configPath, 'utf-8');
-    const parsed = JSON.parse(fileContent);
-    assert(parsed['test-guild-roundtrip']?.botMuted === true, 'botMuted true after save');
-    assert(parsed['test-guild-roundtrip']?.chaosEnabled === false, 'chaosEnabled false after save');
-  } catch (e) {
-    console.log(`  SKIP: save/load (file not available: ${e.message})`);
-  }
+  const cfg = getGuildConfig('test-guild-roundtrip');
+  assert(cfg.botMuted === true, 'botMuted true after save');
+  assert(cfg.chaosEnabled === false, 'chaosEnabled false after save');
 }
 
 async function testIsGuildMuted() {

@@ -18,6 +18,7 @@ import { readSignals } from './signals.js';
 import { logger } from './logger.js';
 import { withCode, ERR } from './commands/handlers/errors.js';
 import { loadChaosState, startAutoSave as startChaosAutoSave, saveChaosState, stopAutoSave as stopChaosAutoSave } from './chaosStatePersist.js';
+import { initDb } from './db.js';
 import { filterFamilyFriendly } from './character/contentFilter.js';
 
 // ponytail: API adapters live in the Python cognition service (/respond) per
@@ -424,6 +425,9 @@ client.on('ready', async () => {
     conceptGraphData = {};
     categoryConceptsData = {};
   }
+
+  // Initialize SQLite state store (must be first — creates tables + migrates JSON)
+  initDb();
 
   // Load chaos state persistence
   await loadChaosState();

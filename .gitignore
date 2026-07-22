@@ -25,6 +25,7 @@ data/pending_lore/
 *.db-shm
 *.db-wal
 *.sqlite
+.migrated_sqlite
 
 # LLM tooling (never committed)
 .claude/

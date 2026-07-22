@@ -1,201 +1,134 @@
-// Per-channel chaos state persistence
-// Persists channel injection timestamps and target locks to disk
-// Uses same atomic-write pattern as userState.js and guildConfig.js
+// Per-channel chaos state persistence — SQLite-backed
+// Stores injection timestamps and target locks in packy_state.db
 
-import fs from 'fs/promises';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { logger } from './logger.js';
+import { initDb } from './db.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const CHAOS_FILE = path.join(__dirname, '../../data/chaos_state.json');
-
-// In-memory cache
-let chaosCache = {
-  channelLastInjection: {},  // channelId -> timestamp
-  targetLocks: {},           // guildId -> { userId -> expiry }
-};
-
-// Eviction to prevent unbounded growth
 const MAX_CHANNELS = 200;
-const MAX_LOCKS_PER_GUILD = 10;
 
-/**
- * Load chaos state from file into memory cache
- * @returns {Promise<void>}
- */
+let _db = null;
+
+function db() {
+  if (!_db) _db = initDb();
+  return _db;
+}
+
 export async function loadChaosState() {
-  try {
-    const raw = await fs.readFile(CHAOS_FILE, 'utf-8');
-    const parsed = JSON.parse(raw);
-    chaosCache.channelLastInjection = parsed.channelLastInjection || {};
-    chaosCache.targetLocks = parsed.targetLocks || {};
-    
-    // Clean up expired locks on load
-    cleanupExpiredLocks();
-  } catch (error) {
-    if (error.code !== 'ENOENT') {
-      logger.warn('Failed to load chaos state', { error: error.message });
-    }
-    chaosCache = { channelLastInjection: {}, targetLocks: {} };
-  }
+  db();
+  cleanupExpiredLocks();
 }
 
-/**
- * Save chaos state to file atomically (write to .tmp then rename)
- * @returns {Promise<void>}
- */
 export async function saveChaosState() {
-  try {
-    const dir = path.dirname(CHAOS_FILE);
-    await fs.mkdir(dir, { recursive: true });
+}
 
-    // Evict if over limits
-    evictIfNeeded();
+function _getChannelRow(channelId) {
+  return db().prepare(
+    "SELECT state_json FROM chaos_state WHERE channel_id = ?"
+  ).get(channelId);
+}
 
-    const tmpFile = CHAOS_FILE + '.tmp';
-    await fs.writeFile(tmpFile, JSON.stringify(chaosCache, null, 2), 'utf-8');
-    await fs.rename(tmpFile, CHAOS_FILE);
-  } catch (error) {
-    logger.warn('Failed to save chaos state', { error: error.message });
+function _setChannelRow(channelId, data) {
+  const json = JSON.stringify(data);
+  const existing = db().prepare(
+    "SELECT guild_id FROM chaos_state WHERE channel_id = ?"
+  ).get(channelId);
+  if (existing) {
+    db().prepare(
+      "UPDATE chaos_state SET state_json = ? WHERE channel_id = ?"
+    ).run(json, channelId);
+  } else {
+    db().prepare(
+      "INSERT INTO chaos_state (guild_id, channel_id, state_json) VALUES (?, ?, ?)"
+    ).run('', channelId, json);
   }
 }
 
-/**
- * Evict old entries if cache exceeds limits
- */
-function evictIfNeeded() {
-  // Evict oldest channel entries if over limit
-  if (Object.keys(chaosCache.channelLastInjection).length > MAX_CHANNELS) {
-    const entries = Object.entries(chaosCache.channelLastInjection)
-      .sort((a, b) => a[1] - b[1]);  // oldest first
-    const toRemove = entries.slice(0, entries.length - MAX_CHANNELS);
-    for (const [chId] of toRemove) {
-      delete chaosCache.channelLastInjection[chId];
-    }
-  }
-
-  // Evict oldest guild lock entries if over limit
-  for (const [guildId, locks] of Object.entries(chaosCache.targetLocks)) {
-    if (Object.keys(locks).length > MAX_LOCKS_PER_GUILD) {
-      const entries = Object.entries(locks).sort((a, b) => a[1] - b[1]);
-      const toRemove = entries.slice(0, entries.length - MAX_LOCKS_PER_GUILD);
-      for (const [userId] of toRemove) {
-        delete chaosCache.targetLocks[guildId][userId];
-      }
-    }
-  }
-}
-
-/**
- * Remove expired locks from cache (called on load and periodically)
- */
-function cleanupExpiredLocks() {
-  const now = Date.now();
-  for (const [guildId, locks] of Object.entries(chaosCache.targetLocks)) {
-    for (const [userId, expiry] of Object.entries(locks)) {
-      if (now > expiry) {
-        delete chaosCache.targetLocks[guildId][userId];
-      }
-    }
-    if (Object.keys(chaosCache.targetLocks[guildId]).length === 0) {
-      delete chaosCache.targetLocks[guildId];
-    }
-  }
-}
-
-/**
- * Get last injection timestamp for a channel
- * @param {string} channelId - Discord channel ID
- * @returns {number|null} Unix timestamp or null if never injected
- */
 export function getLastInjection(channelId) {
-  return chaosCache.channelLastInjection[channelId] || null;
+  const row = _getChannelRow(channelId);
+  if (!row) return null;
+  try {
+    const data = JSON.parse(row.state_json || '{}');
+    return data.lastInjection || null;
+  } catch {
+    return null;
+  }
 }
 
-/**
- * Set last injection timestamp for a channel
- * @param {string} channelId - Discord channel ID
- * @param {number} timestamp - Unix timestamp
- */
 export function setLastInjection(channelId, timestamp) {
-  chaosCache.channelLastInjection[channelId] = timestamp;
+  const row = _getChannelRow(channelId);
+  let data = {};
+  if (row) {
+    try { data = JSON.parse(row.state_json || '{}'); } catch { data = {}; }
+  }
+  data.lastInjection = timestamp;
+  _setChannelRow(channelId, data);
+  evictIfNeeded();
 }
 
-/**
- * Get target locks for a guild
- * @param {string} guildId - Discord guild ID
- * @returns {Map<string, number>} Map of userId -> expiry timestamp
- */
 export function getGuildTargetLocks(guildId) {
-  const locks = chaosCache.targetLocks[guildId] || {};
-  // Clean expired from the returned map
+  const rows = db().prepare(
+    "SELECT channel_id, state_json FROM chaos_state WHERE guild_id = ?"
+  ).all(guildId);
   const now = Date.now();
-  for (const [userId, expiry] of Object.entries(locks)) {
-    if (now > expiry) delete locks[userId];
+  const locks = {};
+  for (const row of rows) {
+    try {
+      const data = JSON.parse(row.state_json || '{}');
+      const expiry = data.lockExpiry;
+      if (expiry && now <= expiry) {
+        const userId = row.channel_id.replace('target_', '');
+        locks[userId] = expiry;
+      }
+    } catch { /* skip malformed */ }
   }
   return locks;
 }
 
-/**
- * Set target lock for a user in a guild
- * @param {string} guildId - Discord guild ID
- * @param {string} userId - Discord user ID
- * @param {number} expiry - Unix timestamp when lock expires
- */
 export function setTargetLock(guildId, userId, expiry) {
-  if (!chaosCache.targetLocks[guildId]) {
-    chaosCache.targetLocks[guildId] = {};
-  }
-  chaosCache.targetLocks[guildId][userId] = expiry;
+  const json = JSON.stringify({ lockExpiry: expiry });
+  db().prepare(
+    "INSERT INTO chaos_state (guild_id, channel_id, state_json) VALUES (?, ?, ?) ON CONFLICT(guild_id, channel_id) DO UPDATE SET state_json = excluded.state_json"
+  ).run(guildId, `target_${userId}`, json);
 }
 
-/**
- * Clear target lock for a user in a guild
- * @param {string} guildId - Discord guild ID
- * @param {string} userId - Discord user ID
- */
 export function clearTargetLock(guildId, userId) {
-  if (chaosCache.targetLocks[guildId]) {
-    delete chaosCache.targetLocks[guildId][userId];
+  db().prepare(
+    "DELETE FROM chaos_state WHERE guild_id = ? AND channel_id = ?"
+  ).run(guildId, `target_${userId}`);
+}
+
+function evictIfNeeded() {
+  const count = db().prepare("SELECT COUNT(*) as cnt FROM chaos_state").get();
+  if (count && count.cnt > MAX_CHANNELS * 2) {
+    db().prepare(
+      "DELETE FROM chaos_state WHERE rowid IN (SELECT rowid FROM chaos_state ORDER BY rowid ASC LIMIT ?)"
+    ).run(Math.max(0, count.cnt - MAX_CHANNELS));
   }
 }
 
-// Auto-save interval
+function cleanupExpiredLocks() {
+  const now = Date.now();
+  const rows = db().prepare("SELECT guild_id, channel_id, state_json FROM chaos_state").all();
+  for (const row of rows) {
+    try {
+      const data = JSON.parse(row.state_json || '{}');
+      if (data.lockExpiry && now > data.lockExpiry) {
+        db().prepare(
+          "DELETE FROM chaos_state WHERE guild_id = ? AND channel_id = ?"
+        ).run(row.guild_id, row.channel_id);
+      }
+    } catch { /* skip */ }
+  }
+}
+
 let _saveInterval = null;
 
-/**
- * Start auto-saving chaos state periodically
- * @param {number} intervalMs - Interval in milliseconds (default 5 minutes)
- */
-export function startAutoSave(intervalMs = 5 * 60 * 1000) {
+export function startAutoSave(_intervalMs = 5 * 60 * 1000) {
   if (_saveInterval) clearInterval(_saveInterval);
-  _saveInterval = setInterval(() => {
-    saveChaosState().catch(err => {
-      logger.warn('Chaos state auto-save failed', { error: err.message });
-    });
-  }, intervalMs);
 }
 
-/**
- * Stop auto-saving chaos state
- */
 export function stopAutoSave() {
   if (_saveInterval) {
     clearInterval(_saveInterval);
     _saveInterval = null;
   }
 }
-
-export default {
-  loadChaosState,
-  saveChaosState,
-  getLastInjection,
-  setLastInjection,
-  getGuildTargetLocks,
-  setTargetLock,
-  clearTargetLock,
-  startAutoSave,
-  stopAutoSave,
-};

@@ -1,51 +1,49 @@
-import fs from 'fs/promises';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { logger } from './logger.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const CONFIG_FILE = path.join(__dirname, '../../data/guild_config.json');
+import { initDb } from './db.js';
 
 const DEFAULT_CONFIG = {
   prefix: '!packy',
-  allowedChannels: [],    // empty = all channels allowed
+  allowedChannels: [],
   botMuted: false,
   chaosEnabled: true,
   unprovokedEnabled: true,
   maxResponseLength: 1990,
-  familyFriendly: false,   // per-guild content filter
+  familyFriendly: false,
 };
 
-let configCache = {};
+let _db = null;
+
+function db() {
+  if (!_db) _db = initDb();
+  return _db;
+}
 
 export async function loadGuildConfigs() {
-  try {
-    const raw = await fs.readFile(CONFIG_FILE, 'utf-8');
-    configCache = JSON.parse(raw);
-  } catch { /* non-fatal: no config file yet */ 
-    configCache = {};
-  }
+  db();
 }
 
 export async function saveGuildConfigs() {
-  const tmp = CONFIG_FILE + '.tmp';
-  await fs.mkdir(path.dirname(CONFIG_FILE), { recursive: true });
-  await fs.writeFile(tmp, JSON.stringify(configCache, null, 2), 'utf-8');
-  await fs.rename(tmp, CONFIG_FILE);
 }
 
 export function getGuildConfig(guildId) {
-  return { ...DEFAULT_CONFIG, ...(configCache[guildId] || {}) };
+  const row = db().prepare('SELECT config_json FROM guild_config WHERE guild_id = ?').get(guildId);
+  if (!row) return { ...DEFAULT_CONFIG };
+  try {
+    return { ...DEFAULT_CONFIG, ...JSON.parse(row.config_json || '{}') };
+  } catch {
+    return { ...DEFAULT_CONFIG };
+  }
 }
 
 export function setGuildConfig(guildId, updates) {
-  configCache[guildId] = { ...(configCache[guildId] || {}), ...updates };
+  const existing = getGuildConfig(guildId);
+  const merged = { ...existing, ...updates };
+  db().prepare(
+    'INSERT INTO guild_config (guild_id, config_json) VALUES (?, ?) ON CONFLICT(guild_id) DO UPDATE SET config_json = excluded.config_json'
+  ).run(guildId, JSON.stringify(merged));
 }
 
 export function isChannelAllowed(guildId, channelId) {
   const config = getGuildConfig(guildId);
-  // Empty allow-list = deny all (opt-in model).
   if (!config.allowedChannels || config.allowedChannels.length === 0) return false;
   return config.allowedChannels.includes(channelId);
 }
@@ -55,13 +53,8 @@ export function isGuildMuted(guildId) {
 }
 
 let _saveInterval = null;
-export function startAutoSave(intervalMs = 5 * 60 * 1000) {
+export function startAutoSave(_intervalMs = 5 * 60 * 1000) {
   if (_saveInterval) clearInterval(_saveInterval);
-  _saveInterval = setInterval(() => {
-    saveGuildConfigs().catch(error => {
-      logger.error('Guild config auto-save failed', { error: error.message });
-    });
-  }, intervalMs);
 }
 
 export function stopAutoSave() {

@@ -1,11 +1,13 @@
 import { EmbedBuilder } from 'discord.js';
 import { getCurrentCharacter } from '../../character/randomizer.js';
 import { logger } from '../../logger.js';
+import { metrics } from '../../metrics.js';
 import { ERR, withCode } from './errors.js';
 import { COLORS } from './_shared.js';
 
 export async function handleStatusCommand(interaction, modules) {
   const { lorebook } = modules;
+  metrics.counter('command.invoked', { name: 'status' });
 
   try {
     const PRIMARY_ADAPTER = process.env.PRIMARY_ADAPTER || 'claude';
@@ -53,6 +55,7 @@ export async function handleStatusCommand(interaction, modules) {
     await interaction.editReply({ embeds: [embed] });
   } catch (error) {
     logger.error('Error handling /status command:', { error: error instanceof Error ? error.message : error });
+    metrics.counter('command.failed', { name: 'status' });
     try {
       await interaction.editReply(withCode(ERR.UNKNOWN, 'Status check failed. Very on-brand.'));
     } catch { /* non-fatal */ }
@@ -61,6 +64,7 @@ export async function handleStatusCommand(interaction, modules) {
 
 export async function handleChaosCommand(interaction, modules) {
   const { channelChaos } = modules;
+  metrics.counter('command.invoked', { name: 'chaos' });
 
   try {
     const guildCfg = modules.getGuildConfig ? modules.getGuildConfig(interaction.guildId) : {};
@@ -111,6 +115,7 @@ export async function handleChaosCommand(interaction, modules) {
     await interaction.editReply({ embeds: [embed] });
   } catch (error) {
     logger.error('Error handling /chaos command:', { error: error instanceof Error ? error.message : error });
+    metrics.counter('command.failed', { name: 'chaos' });
     try {
       await interaction.editReply(withCode(ERR.CHAOS, 'Chaos state unreadable. Ironic.'));
     } catch { /* non-fatal */ }

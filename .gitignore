@@ -53,3 +53,4 @@ credentials.json
 # Runtime / generated config (do not commit)
 data/guild_config.json
 tsconfig.json
+data/metrics.json

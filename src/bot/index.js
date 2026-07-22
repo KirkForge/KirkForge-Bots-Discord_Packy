@@ -16,6 +16,7 @@ import {
 } from './character/chaosState.js';
 import { readSignals } from './signals.js';
 import { logger } from './logger.js';
+import { metrics, startMetricsFlush, stopMetricsFlush } from './metrics.js';
 import { withCode, ERR } from './commands/handlers/errors.js';
 import { loadChaosState, startAutoSave as startChaosAutoSave, saveChaosState, stopAutoSave as stopChaosAutoSave } from './chaosStatePersist.js';
 import { initDb } from './db.js';
@@ -107,6 +108,7 @@ async function callMicroservice(userText, guildId, userId, retries = 2) {
 
       if (!response.ok) {
         logger.error(`Microservice error: ${response.status}`);
+        metrics.error(new Error(`Microservice error: ${response.status}`), { status: response.status });
         if (attempt < retries) {
           await new Promise(r => setTimeout(r, 200 * Math.pow(2, attempt)));
           continue;
@@ -118,6 +120,7 @@ async function callMicroservice(userText, guildId, userId, retries = 2) {
       return data.result || withCode(ERR.MICROSERVICE, 'Hmm, I got nothing.');
     } catch (error) {
       logger.error(`Microservice attempt ${attempt + 1} failed:`, { error: error.message });
+      metrics.error(error, { attempt: attempt + 1 });
       if (attempt < retries) {
         await new Promise(r => setTimeout(r, 200 * Math.pow(2, attempt)));
         continue;
@@ -243,7 +246,9 @@ async function handleMessage(message) {
 
   try {
     // ponytail: single LLM call path — Python cognition /respond (ADR-003/010).
+    const _start = Date.now();
     let response = await callMicroservice(userText, message.guildId, message.author.id);
+    metrics.timing('respond.latency', Date.now() - _start, { guildId: message.guildId });
 
     // Process response (Glitch may corrupt output)
     let processedResponse = processResponse(response);
@@ -277,6 +282,7 @@ async function handleMessage(message) {
     return;
   } catch (error) {
     logger.error('Error handling message', { error: error instanceof Error ? error.message : error });
+    metrics.error(error instanceof Error ? error : new Error(String(error)), { source: 'messageHandler' });
     return message.reply({
       content: withCode(ERR.UNKNOWN, 'Something broke in my circuits. Very embarrassing.'),
       allowedMentions: { repliedUser: false },
@@ -365,6 +371,7 @@ async function handleInteraction(interaction) {
     ]);
   } catch (error) {
     logger.error('Error handling interaction', { error: error instanceof Error ? error.message : error });
+    metrics.error(error instanceof Error ? error : new Error(String(error)), { source: 'interactionHandler' });
     try {
       await interaction.editReply(withCode(ERR.UNKNOWN, 'Something broke in my circuits. Very embarrassing.'));
     } catch { /* non-fatal: reply already failed */ }
@@ -409,6 +416,7 @@ client.on('ready', async () => {
     logger.info('Lorebook loaded', { categories: Object.keys(lorebook.categories).length });
   } catch (error) {
     logger.error('Failed to load lorebook', { error: error.message });
+    metrics.error(error, { source: 'lorebook' });
     lorebook = { categories: {} };
   }
 
@@ -422,6 +430,7 @@ client.on('ready', async () => {
     logger.info('Concept graph loaded', { graphKeys: Object.keys(conceptGraphData).length, categoryConcepts: Object.keys(categoryConceptsData).length });
   } catch (error) {
     logger.error('Failed to load concept graph', { error: error.message });
+    metrics.error(error, { source: 'conceptGraph' });
     conceptGraphData = {};
     categoryConceptsData = {};
   }
@@ -439,6 +448,7 @@ client.on('ready', async () => {
   await loadGuildConfigs();
   startStateAutoSave();
   startConfigAutoSave();
+  startMetricsFlush();
   logger.info('User state and guild config loaded');
 });
 
@@ -466,6 +476,7 @@ async function gracefulShutdown(signal) {
   stopStateAutoSave();
   stopConfigAutoSave();
   stopChaosAutoSave();
+  stopMetricsFlush();
 
   // Wait for in-flight operations with 5s deadline
   const deadline = Date.now() + 5000;
@@ -491,12 +502,14 @@ process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 // Alert handler — surface threshold breaches to an ops channel
 logger.on('alert', (payload) => {
   logger.error('ALERT', payload);
+  metrics.error(new Error('ALERT'), { alert: payload });
   // In production, post to a Discord ops channel or webhook
 });
 
 // Error handling
 client.on('error', (error) => {
   logger.error('Discord client error', { error: error.message, stack: error.stack });
+  metrics.error(error, { source: 'discordClient' });
 });
 
 let unhandledRejectionCount = 0;
@@ -508,6 +521,7 @@ process.on('unhandledRejection', (reason, _promise) => {
     stack: reason instanceof Error ? reason.stack : null,
     count: unhandledRejectionCount,
   });
+  metrics.error(reason instanceof Error ? reason : new Error(String(reason)), { source: 'unhandledRejection', count: unhandledRejectionCount });
   if (unhandledRejectionCount === REJECTION_ALERT_THRESHOLD) {
     logger.emit && logger.emit('alert', {
       type: 'unhandledRejectionThreshold',

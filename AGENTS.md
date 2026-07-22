@@ -39,9 +39,10 @@ uvicorn src.orchestration.packy_endpoint:app --port 8765
 ```
 Discord → src/bot/index.js (discord.js)
            ├─ commands/    (register.js, handlers.js — slash commands with Discord embeds, rate limiting)
-           ├─ character/   (state.js, mood.js, snarkBank.js, loreSelector.js, chaosState.js, systemPrompt.js, emotionClassifier.js)
-           ├─ api/         (claudeAdapter.js, minimaxAdapter.js)
-           └─ signals.js   (CPU load, weather via OpenWeatherMap)
+            ├─ character/   (state.js, mood.js, snarkBank.js, loreSelector.js, chaosState.js, systemPrompt.js, emotionClassifier.js)
+            ├─ db.js        (SQLite state store for guild/user/chaos persistence)
+            ├─ metrics.js   (counter/gauge/timing/error + ring buffer + Sentry transport)
+            └─ signals.js   (CPU load, weather via OpenWeatherMap)
 
 src/cognition/   — Python: packy_brain.py, packy_cog_engine.py, mood/snark/lore engines,
                    packy_war_stories.py, packy_memory_tools.py, packy_persona_tools.py, packy_behavior_profiles.py
@@ -111,10 +112,10 @@ cd /path/to/GargoylePackyV2 && git add data/guild_config.json data/chaos_state.j
 - **Unprovoked commentary**: chaos layer fires on ALL messages in a channel (not just mentions), rate-limited per channel
 - **Rate limiting**: 3 requests per 10 seconds per user (in-memory Map, not persisted)
 - **Python path hack**: `packy_endpoint.py:21` adds `project_root` to `sys.path` so imports like `from src.cognition...` work
-- **Snark consolidation**: Three Python snark files merged into single `snarkBank.js`; the original Python files (`packy_snark_engine.py`, `packy_snark.py`, `packy_comment_snark.py`) are still present and used by the Python cognition layer
-- **`src/orchestration/packy_entry_ref.py`**: archived reference entry point (CLI loop using old llama_adapter) — not active
-- **`src/orchestration/small orchistrator.py`**: draft/scratch file with space in name — reference only, not imported
-- **`src/bot/packy.js`**: web terminal UI (not Discord) — not the active entrypoint
+- **Snark consolidation**: ADR-006 Fulfilled — Python snark files consolidated into `packy_snark.py`; JS-side snark lives in `snarkBank.js`
+- **Persistence**: JS-side guild/user/chaos state uses SQLite via `db.js` (WAL mode, one-shot JSON migration); Python side uses `packy_memory.py`
+- **Metrics**: `metrics.js` provides counter/gauge/timing/error with ring buffer + optional Sentry; flush to `data/metrics.json` every 60s
+- **Composer**: `packy_cog_engine.py` is an emergency fallback (ADR-018), not in the LLM prompt path; primary response is `call_llm()`
 
 ---
 
@@ -150,7 +151,7 @@ cd /path/to/GargoylePackyV2 && git add data/guild_config.json data/chaos_state.j
 - Small, pure, well-named functions. No dead code. No debug spam (`console.log`, `print(`) in committed code.
 - Match the existing style. Node side: ESM (`"type": "module"`), discord.js conventions, `src/bot/character/` module layout. Python side: `ruff` with `line-length 100`, `E402` ignored for the `sys.path` hack pattern.
 - Preserve honest-doc annotations (`ponytail:`, `ceiling:`, `upgrade path:`) — they document known limitations. Removing them is a regression.
-- Dead code noted in `state.md`: `small_orchestrator.py`, `packy_entry_ref.py`, `src/bot/packy.js`, three separate Python snark files (ADR-006 deferred). Don't add more; consider removing when in scope.
+- Dead code removed: `small_orchestrator.py`, `packy_entry_ref.py`, `src/bot/packy.js` deleted in `ea5e916`; snark files consolidated per ADR-006 (Fulfilled). Don't add more dead code.
 - A change that adds 100 lines to fix a 3-line bug is probably wrong. Find the smaller change.
 
 ## 6. Autonomous bug fixing

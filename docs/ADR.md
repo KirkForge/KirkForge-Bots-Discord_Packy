@@ -384,3 +384,70 @@ The bot joins a Discord voice channel and plays internet radio stations on comma
 
 - Radio is a self-contained voice feature; failures are isolated from the character pipeline.
 - The station catalog grows by editing `radioStations.js`; no protocol change.
+
+---
+
+## ADR-016: JS-side SQLite State Store
+
+**Status:** Accepted  
+**Date:** 2026-07-22
+
+### Context
+
+Guild config, user state, and chaos state were persisted as JSON files (`guildConfig.js`, `userState.js`, `chaosStatePersist.js`) with atomic-write `.tmp` rename. The Python side already uses SQLite (`packy_memory.py`). The JS hot path hits `getGuildConfig()` on every message with synchronous semantics, but JSON file writes race on concurrent mutations and load the entire config into memory at boot.
+
+### Decision
+
+Replace JSON-file persistence with SQLite via `node:sqlite` (Node 22+ built-in `DatabaseSync`) with `better-sqlite3` fallback. Three tables (`guild_config`, `user_state`, `chaos_state`) store JSON blobs per row, matching the Python schema pattern. One-shot JSON-to-SQLite migration on first boot, with `.migrated_sqlite` marker to prevent re-migration. Original JSON files are preserved (never deleted).
+
+### Consequences
+
+- Per-message config reads are single `SELECT` queries, not file reads.
+- `setGuildConfig()` commits immediately via `UPSERT` — no race window.
+- `saveGuildConfigs()` becomes a no-op (each write is already committed).
+- `node:sqlite` is experimental in Node 22 but works without flags; `better-sqlite3` is the fallback.
+- WAL mode ensures read concurrency for the bot's per-message hot path.
+
+---
+
+## ADR-017: Metrics + Sentry Observability
+
+**Status:** Accepted  
+**Date:** 2026-07-22
+
+### Context
+
+`logger.js` was a pure stdout `EventEmitter` — no counters, no gauges, no alerting. Nine `logger.error` sites in `index.js` vanished into stderr. A commercial bot needs observability before it can charge money (ADR-011/012).
+
+### Decision
+
+Add `src/bot/metrics.js` with a minimal interface: `counter(name, labels)`, `gauge(name, value, labels)`, `timing(name, ms, labels)`, `error(err, context)`. Default transport: in-memory ring buffer (100-error cap) flushed to `data/metrics.json` every 60s. Sentry lazy-inits from `SENTRY_DSN` if set; clean-clone safe without it. Per-command counters added to `core.js` and `system.js`. `/respond` latency timing added to `index.js`.
+
+### Consequences
+
+- A dev clone with no `SENTRY_DSN` still gets observability via `data/metrics.json`.
+- Ring buffer caps errors at 100 to bound memory.
+- `@sentry/node` is optional; only loaded when `SENTRY_DSN` is set.
+- Metrics calls are layered alongside `logger.error` — no logging is removed.
+
+---
+
+## ADR-018: Composer Emergency Fallback (Not LLM Prompt)
+
+**Status:** Accepted  
+**Date:** 2026-07-22
+
+### Context
+
+`packy_cog_engine.py` is a `random.choice` template composer. Prior to this ADR, its output was prepended to the LLM system prompt in `/respond` (`packy_endpoint.py:617`), polluting the prompt with mad-libs. The workorder considered making the composer LLM-backed, but the actual call graph shows the composer feeds the LLM prompt, not a post-failure fallback. Making it LLM-backed would double per-request cost and latency.
+
+### Decision
+
+Remove the composer from the LLM prompt path entirely. The composer is now an **emergency fallback only**: when `call_llm()` raises an exception, `cog_engine.think()` produces a templated response. The chain is: LLM primary → composer emergency fallback → "circuits fried" error string. Docstrings updated to honestly label the composer as emergency-only.
+
+### Consequences
+
+- LLM prompt is no longer polluted with stochastic template output.
+- On LLM failure, users still get a character-consistent fallback (not a bare error).
+- `cognition_text` in `RespondResponse` is set only when fallback fires.
+- Future work can wire `PACKY_COMPOSE_MODEL` for a cheaper-model fallback without changing this structure.

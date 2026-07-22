@@ -1,21 +1,17 @@
 """
-packy_cog_engine.py — Packy v2.06 Response Composer (stochastic style, not LLM reasoning)
------------------------------------------------------------------------------------------
+packy_cog_engine.py — Packy v2.06 Response Composer (emergency fallback)
+-----------------------------------------------------------------------
 
-Packy's lightweight response composer.
-It does NOT call a language model; it deterministically classifies intent, then
-stochastically fills a small set of hand-written templates with theme/tone
-snippets.  This gives Packy his grumpy veteran voice without shipping a fake
-"cognition" layer.
+Packy's emergency response composer. When the primary LLM call fails, this
+composer produces a character-consistent fallback response using stochastic
+template filling — it does NOT call a language model.
 
-Historical note: prior versions called this a "synthetic reasoning module" and
-implied it thinks.  It doesn't.  The LLM path lives on the JS side
-(src/bot/index.js direct mode) and in the Python microservice the brain
-eventually delegates to an adapter.  This file is now explicitly a style
-composer so callers are not misled.
+The primary response path is the LLM call in packy_endpoint.call_llm().
+This composer is invoked ONLY when call_llm raises an exception, providing
+an honest fallback rather than a silent degradation.
 
 Public functions:
-  - think(instruction)           → composed response text
+  - think(instruction)           → composed emergency response text
   - interpret(instruction)       → rule-based intent classifier
   - plan(interpretation)         → response strategy selector
   - create_lore_entry(text)      → templated lore entry
@@ -80,11 +76,12 @@ PACKY_INTERNAL_MONOLOGUE = [
 
 class PackyCogEngine:
     """
-    Packy's stochastic response composer.
+    Packy's emergency fallback composer.
 
     This class does not perform LLM reasoning; it classifies intent with a
     simple rule set and fills pre-written templates with random theme/tone
-    snippets to produce a character-consistent reply.
+    snippets to produce a character-consistent fallback reply. It is invoked
+    ONLY when the primary LLM call fails (see packy_endpoint.py respond()).
 
     Public functions:
       - think(instruction)

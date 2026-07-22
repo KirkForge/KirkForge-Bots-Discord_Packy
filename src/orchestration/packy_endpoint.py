@@ -548,10 +548,9 @@ async def respond(request: RespondRequest, req: Request) -> RespondResponse:
     """
     Process user text through the Packy response pipeline:
     1. Resolve system state (CPU/temp -> mood/snark)
-    2. Use PackyCogEngine.think() for stochastic style composition (not LLM reasoning)
-    3. Select relevant lore based on text, snark level, and mood
-    4. Build metadata header and final prompt
-    5. Return assembled prompt and state info
+    2. Select relevant lore based on text, snark level, and mood
+    3. Build metadata header and final prompt
+    4. Call LLM (primary path); fall back to PackyCogEngine on failure
 
     Args:
         user_text: User message to Packy
@@ -576,19 +575,11 @@ async def respond(request: RespondRequest, req: Request) -> RespondResponse:
         snark_level_str = state_dict.get("snark_level", "LOW")
         snark_float = map_snark_to_float(snark_level_str)
 
-        # Step 2: Generate cognition text via PackyCogEngine
+        # Step 2: Cognition text is NOT prepended to the LLM prompt (ADR-018).
+        # The composer was polluting the system prompt with mad-libs. The honest
+        # path is: LLM primary → composer emergency fallback on LLM failure.
+        # cognition_text is now set only when LLM fails, below.
         cognition_text = ""
-        cog_engine = get_cog_engine()
-        if cog_engine:
-            try:
-                cognition_text = cog_engine.think(request.user_text)
-                logger.debug("Cognition engine produced reasoning text")
-            except Exception as e:
-                logger.warning("PackyCogEngine.think() failed; using empty cognition: %s", e)
-                cognition_text = f"(Cognition unavailable: {str(e)})"
-        else:
-            logger.debug("PackyCogEngine not available; skipping cognition phase")
-            cognition_text = "(Cognition engine not loaded)"
 
         # Step 3: Select lore based on text, snark level, and mood
         lore_used = False
@@ -613,8 +604,9 @@ async def respond(request: RespondRequest, req: Request) -> RespondResponse:
         header = build_metadata_header(state_dict, guild_id=request.guild_id)
 
         # Step 5: Assemble final prompt
-        # Format: header + cognition_text + lore_block + "\nUser: {user_text}\nPacky:"
-        assembled_prompt = f"{header}\n{cognition_text}"
+        # Format: header + lore_block + "\nUser: {user_text}\nPacky:"
+        # cognition_text is NOT included (composer removed from prompt path per ADR-018)
+        assembled_prompt = header
         if lore_block:
             assembled_prompt += f"\n\n{lore_block}"
         assembled_prompt += f"\n\nUser: {request.user_text}\nPacky:"
@@ -634,13 +626,32 @@ async def respond(request: RespondRequest, req: Request) -> RespondResponse:
         }
         style_limit = style_limit_map.get(snark_level_str, 800)
 
-        # Step 7: Extract system prompt (everything before "\nUser:") and call LLM
+        # Step 7: Call LLM (primary path); fall back to emergency composer on failure
         system_prompt = (
             assembled_prompt.split("\nUser:")[0]
             if "\nUser:" in assembled_prompt
             else assembled_prompt
         )
-        packy_response = await call_llm(system_prompt, request.user_text, max_tokens=style_limit)
+        try:
+            packy_response = await call_llm(
+                system_prompt, request.user_text, max_tokens=style_limit
+            )
+        except Exception as llm_err:
+            # Emergency fallback: use PackyCogEngine stochastic composer (ADR-018)
+            # This is honest — the LLM failed, so we provide a templated fallback,
+            # not a second LLM call (which would double cost and latency).
+            logger.warning("LLM call failed; using emergency composer fallback: %s", llm_err)
+            cog_engine = get_cog_engine()
+            if cog_engine:
+                try:
+                    packy_response = cog_engine.think(request.user_text)
+                    cognition_text = "(Emergency fallback: LLM unavailable)"
+                except Exception:
+                    packy_response = "My circuits are fried. Try again, meatbag."
+                    cognition_text = "(Emergency fallback also failed)"
+            else:
+                packy_response = "My circuits are fried. Try again, meatbag."
+                cognition_text = "(LLM and emergency fallback both unavailable)"
 
         logger.info(
             "Respond: mood=%s, snark=%s, user_id=%s, guild_id=%s, lore_used=%s",

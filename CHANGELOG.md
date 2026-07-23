@@ -8,6 +8,9 @@
 ### Testing
 - **T2**: Migrated Node tests from custom `console.log` runner to Vitest. 77 assertions across 6 test files with `describe/it/expect`. Added new assertions for rate limiter status tracking, chaos score bounds, concurrent DB writes, and metric aggregation.
 
+### Dependencies
+- **T3**: Added `stripe>=10.0` to pyproject.toml and requirements.txt. Unified Python dependency management: pyproject.toml is now the single source of truth. Removed requirements.txt. Updated CI and Dockerfile.cognition to use `pip install -e ".[dev]"`.
+
 ## [2.2.0] — 2026-07-23
 
 ### Architecture

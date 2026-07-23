@@ -168,5 +168,50 @@ export function resetForTesting() {
     _db.exec('DELETE FROM guild_config');
     _db.exec('DELETE FROM user_state');
     _db.exec('DELETE FROM chaos_state');
+    try {
+      _db.exec('DELETE FROM metrics');
+    } catch {
+      // metrics table may not exist yet if flushMetricsToDb hasn't been called
+    }
   }
+}
+
+/**
+ * Read and parse a JSON file from disk.
+ * Centralizes all file I/O for static data loading through db.js.
+ */
+export function readJsonFile(filePath) {
+  const raw = fs.readFileSync(filePath, 'utf-8');
+  return JSON.parse(raw);
+}
+
+/**
+ * Read and parse a JSON file from disk (async).
+ * Centralizes all file I/O for static data loading through db.js.
+ */
+export async function readJsonFileAsync(filePath) {
+  const raw = await fs.promises.readFile(filePath, 'utf-8');
+  return JSON.parse(raw);
+}
+
+/**
+ * Flush metrics data to the metrics SQLite table.
+ * Replaces the old fs.writeFileSync(metrics.json) persistence.
+ */
+export function flushMetricsToDb(metricsData) {
+  const db = getDb();
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS metrics (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      data_json TEXT NOT NULL,
+      flushed_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+
+  const insertMetrics = db.prepare('INSERT INTO metrics (data_json) VALUES (?)');
+  insertMetrics.run(JSON.stringify(metricsData));
+
+  // Keep only the latest 10 metric snapshots
+  db.exec(`DELETE FROM metrics WHERE id NOT IN (SELECT id FROM metrics ORDER BY id DESC LIMIT 10)`);
 }

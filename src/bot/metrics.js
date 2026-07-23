@@ -1,20 +1,18 @@
 /**
  * Metrics interface for observability.
  *
- * Default transport: in-memory ring buffer flushed to data/metrics.json
+ * Default transport: in-memory ring buffer flushed to SQLite (data/packy_state.db)
  * every 60s. If SENTRY_DSN is set, errors are also sent to Sentry.
  *
- * Clean-clone safe: no SENTRY_DSN = ring buffer only (zero deps).
+ * Clean-clone safe: no SENTRY_DSN = ring buffer only (zero deps beyond db.js).
  */
 
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { createRequire } from 'module';
+import { flushMetricsToDb } from './db.js';
 import { logger } from './logger.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const METRICS_FILE = path.join(__dirname, '../../data/metrics.json');
+const require = createRequire(import.meta.url);
+
 const MAX_ERRORS = 100;
 
 const counters = new Map();
@@ -111,12 +109,9 @@ function percentile(arr, p) {
 
 export function flush() {
   try {
-    const dir = path.dirname(METRICS_FILE);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    const data = JSON.stringify(getMetrics(), null, 2);
-    fs.writeFileSync(METRICS_FILE, data, 'utf-8');
+    flushMetricsToDb(getMetrics());
   } catch (e) {
-    logger.warn('Failed to flush metrics', { error: e.message });
+    logger.warn('Failed to flush metrics to SQLite', { error: e.message });
   }
 }
 

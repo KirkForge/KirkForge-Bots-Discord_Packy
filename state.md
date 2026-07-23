@@ -1,49 +1,55 @@
-# State — KirkForge-Bots-Discord_Packy (Gargoyle Packy V2)
+# State — KirkForge-Bots-Discord_Packy (2026-07-23)
 
-*Tracked. Updated at session close. What changed, what's pending, what's blocked.*
+## What shipped this session (workorder-2026-07-23)
 
-## Current state
-- Head: uncommitted (tree dirty, all changes staged-ready)
-- Tests: 66 Python pass (0 warnings), 15 smoke + 19 integration + 18 guildConfig JS pass
-- Lint: `ruff check .` green, `ruff format --check .` green, `npm run lint` green
-- CI: 4 jobs (smoke, lint=eslint, lint-python=ruff, pytest)
-- Last updated: 2026-07-21
+All 4 tasks completed:
 
----
+### T1 — FF main to dev (commit `5f4c1f9..8321827`)
+- Merged dev → main via fast-forward (6 commits from prior workorder)
+- Pushed to origin/main
+- Gate: `git log --oneline -1 main` = `8321827`
 
-## What changed this session (2026-07-21)
+### T2 — Response composer: real LLM fallback (commit `adbf249`)
+- `PackyCogEngine.__init__` now accepts `llm_fn` parameter (constructor-injected from packy_endpoint)
+- `think()` is now async: tries `_llm_fallback()` first (calls cheap LLM), falls back to `random.choice` templates
+- `_llm_fallback()` calls injected `llm_fn` with `PACKY_COMPOSE_MODEL` (default: claude-haiku-4-5-20251001)
+- `packy_endpoint.py`: added `_compose_llm_fn` wrapper that calls `_call_claude` directly (raises on failure)
+- `call_llm`/`_call_claude` accept `model` override parameter
+- Updated ADR-018: "emergency-only, random.choice" → "cheap-LLM fallback, random.choice last-resort"
+- Added 5 LLM fallback tests + 2 docstring tests (15 total compose tests, up from 10)
+- Updated `test_cognition.py` for async `think()`
+- Gate: 81 Python tests passed, ruff check/format green
 
-### P0 — ruff green + CI gate (B- → B)
-- **92 lint errors fixed:** 63 auto-fixed (`ruff check --fix`), 29 manual (F811 logger redefinitions in packy_brain/ subpackage, F841 unused variables, E741 ambiguous names, E701/E702 style issues, F403 star import suppressions).
-- **82 files reformatted:** `ruff format .` single commit, no logic changes.
-- **CI gate added:** `.github/workflows/ci.yml` now has `lint-python` job (Python 3.11, `pip install ruff`, `ruff check .`, `ruff format --check .`).
-- **Gate:** `ruff check .` exits 0; `ruff format --check .` exits 0.
+### T3 — Replace remaining JSON-file persistence with SQLite (commit `16ca92a`)
+- `metrics.js`: replaced `fs.writeFileSync` flush to `data/metrics.json` with `flushMetricsToDb()` (SQLite)
+- `loreSelector.js`: replaced `fs.readFile` with `readJsonFileAsync()` from db.js
+- `db.js`: added `readJsonFile`, `readJsonFileAsync`, `flushMetricsToDb` utilities
+- `db.js`: `resetForTesting` handles missing `metrics` table gracefully
+- Gate: `grep "fs.readFile|fs.writeFile" src/bot/ src/cognition/` → only in db.js migration code
 
-### P1 — stale doc regression fixed
-- `README.md`: dropped references to deleted snark files, updated Running Tests section, marked snark consolidation as ADR-006 Fulfilled.
-- `docs/PROJECT_OVERVIEW.md`: dropped `packy_snark_engine.py`/`packy_comment_snark.py`/`packy.js` refs, marked snark consolidation as Fulfilled.
-- `docs/MINIMAX_PROMPTS.md`: updated Prompt 2 to reference consolidated `packy_snark.py`, marked as DONE.
-- `src/bot/character/snarkBank.js`: updated header to "Merged from packy_snark.py (ADR-006 Fulfilled)".
-- **Gate:** `grep -rn` for deleted file refs → 0 (excluding ADR.md historical context).
+### T4 — Sentry integration in production (commit `e162352`)
+- Added `@sentry/node ^9.0.0` to package.json dependencies
+- Fixed `metrics.js`: `require('@sentry/node')` now uses `createRequire` (ESM compatibility)
+- Added Sentry lazy-init smoke test: verify `error()` works with `SENTRY_DSN` set
+- Updated `.env.example`: corrected metrics flush description (SQLite, not JSON)
+- Gate: `npm run test:all` all pass (15/15 metrics, 30/30 db, 19/19 smoke, etc.), lint green
 
-### P2 — test honesty + deprecation fixes
-- `test/test_services.py`: rewrote 11 tests from `return True`/`return False` try/except pattern to proper pytest assertions. 0 `PytestReturnNotNoneWarning` now.
-- `test/test_cognition.py`: rewrote 6 tests same way.
-- `src/cognition/services/llm_quota_store.py:78,132`: `datetime.utcnow()` → `datetime.now(timezone.utc)`.
-- **Gate:** `PYTHONPATH=. python3 -m pytest -q` → 66 passed, 0 warnings.
+## Current HEAD
 
-### P3 — FastAPI deprecation
-- `src/orchestration/packy_endpoint.py`: migrated `@app.on_event("startup")` to `lifespan` async context manager. Added `from contextlib import asynccontextmanager`.
-- **Gate:** pytest green.
+`e162352` on branch `workorder-2026-07-23` (3 commits ahead of `dev`)
 
-### Bugfix (found during gate run)
-- `tests/test_update.py:298`: `"bytes = b'"` → `"bytes = b"` for Python 3.12 compat (repr(bytes) uses double quotes in 3.12+).
+## What's pending
 
-## Remaining (from WORKORDER)
-- [ ] P2: JS persistence → SQLite (new `db.js` + migration + tests) — largest remaining item
-- [ ] P2: metrics/Sentry — `logger.error(...)` → `metrics.error(...)` with Sentry transport
-- [ ] P3: commit consolidation (a5c18ac + ea5e916 both claim "P0: add pytest job")
+- Push `workorder-2026-07-23` branch to origin (needs merge to dev)
+- FF main to dev after merge (minor follow-up)
+- Python side `packy_memory.py` still uses JSON file persistence (not in scope for this workorder, but noted for future)
+- `PACKY_COMPOSE_MODEL` is now wired and active; consider adding a model override test that verifies the compose model is actually different from the primary model
 
-## Direction source
-- WORKORDER-Discord_Packy.md: prioritized remaining items
-- AGENTS.md: worker contract (plan/verify/self-improve/escalate)
+## Gate evidence
+
+All tasks green-gated with:
+- `PYTHONPATH=. python3 -m pytest -q` → 81 passed
+- `npm run test:all` → 19/19 smoke + 18/18 rateLimiter + 18/18 guildConfig + 18/18 chaos + 30/30 db + 15/15 metrics
+- `npm run lint` → exit 0
+- `ruff check .` → "All checks passed!"
+- `ruff format --check .` → "112 files already formatted"

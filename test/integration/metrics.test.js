@@ -5,7 +5,6 @@
  * and Sentry lazy-init (mocked).
  */
 
-import fs from 'fs';
 import path from 'path';
 import os from 'os';
 
@@ -101,26 +100,50 @@ async function testErrorRingCap() {
 }
 
 async function testFlush() {
-  console.log('\n# Flush to metrics.json');
+  console.log('\n# Flush to SQLite');
 
   const { counter, flush, stopMetricsFlush } = await import('../../src/bot/metrics.js');
+  const { getDb } = await import('../../src/bot/db.js');
+
   counter('test.flush', { ok: 'true' });
   flush();
 
-  const metricsPath = path.join(process.cwd(), 'data', 'metrics.json');
-  let content;
-  try {
-    content = await fs.promises.readFile(metricsPath, 'utf-8');
-  } catch (e) {
-    assert(false, `metrics.json readable: ${e.message}`);
-    return;
+  const db = getDb();
+  const rows = db.prepare('SELECT data_json FROM metrics ORDER BY id DESC LIMIT 1').all();
+  assert(rows.length >= 1, 'metrics row exists in SQLite');
+
+  if (rows.length > 0) {
+    const data = JSON.parse(rows[0].data_json);
+    assert(data.counters['test.flush{ok=true}'] === 1, 'flushed counter present');
+    assert(Array.isArray(data.errors), 'errors array present');
   }
 
-  const data = JSON.parse(content);
-  assert(data.counters['test.flush{ok=true}'] === 1, 'flushed counter present');
-  assert(Array.isArray(data.errors), 'errors array present');
-
   stopMetricsFlush();
+}
+
+async function testSentryLazyInit() {
+  console.log('\n# Sentry lazy-init smoke test');
+
+  // Set a test DSN to trigger Sentry init path
+  const originalDsn = process.env.SENTRY_DSN;
+  process.env.SENTRY_DSN = 'https://test@o0.ingest.sentry.io/0';
+
+  // Clear module cache so metrics.js re-evaluates with SENTRY_DSN set
+  const freshModule = await import(`${'../../src/bot/metrics.js'}?update=${Date.now()}`);
+
+  // Verify that the error function works with Sentry DSN set
+  // (Sentry.init will be attempted but fail gracefully with a fake DSN)
+  const err = new Error('sentry-smoke-test');
+  freshModule.error(err, { source: 'smoke-test' });
+
+  const m = freshModule.getMetrics();
+  assert(m.errors.length >= 1, 'error captured even with Sentry DSN set');
+  const lastErr = m.errors[m.errors.length - 1];
+  assert(lastErr.msg === 'sentry-smoke-test', 'error message preserved with Sentry');
+
+  freshModule.stopMetricsFlush();
+  process.env.SENTRY_DSN = originalDsn || '';
+  delete process.env.SENTRY_DSN;
 }
 
 async function main() {
@@ -134,6 +157,7 @@ async function main() {
   await testErrorCapture();
   await testErrorRingCap();
   await testFlush();
+  await testSentryLazyInit();
 
   console.log('\n' + '='.repeat(60));
   console.log(`Results: ${passed}/${passed + failed} tests passed`);

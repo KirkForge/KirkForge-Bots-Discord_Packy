@@ -1,5 +1,23 @@
 # Changelog — Gargoyle Packy
 
+## [2.2.0] — 2026-07-23
+
+### Architecture
+- **T1**: FF main to dev (6 commits from workorder-2026-07-22 landed on main).
+- **T2**: Cheap-LLM fallback wired into composer (ADR-018 updated). `PackyCogEngine.think()` now async; tries cheap LLM first, falls back to `random.choice` templates. Constructor-injected `llm_fn` from `packy_endpoint.py`.
+- **T3**: Remaining JSON-file persistence replaced with SQLite. `metrics.js` flushes to SQLite via `db.js`. `loreSelector.js` uses `readJsonFileAsync` from `db.js`. Gate: `grep "fs.readFile|fs.writeFile" src/bot/` → only in db.js.
+- **T4**: `@sentry/node ^9.0.0` added to package.json. Fixed ESM `require()` in `metrics.js` with `createRequire`. Added Sentry lazy-init smoke test.
+
+## [2.1.0] — 2026-07-22
+
+### Architecture
+- **T1**: JS-side persistence migrated from JSON files to SQLite (node:sqlite / better-sqlite3). One-shot migration with `.migrated_sqlite` marker. Original JSON files preserved.
+- **T2**: Added metrics interface (`src/bot/metrics.js`) with ring buffer + Sentry lazy-init. Per-command counters and `/respond` latency timing.
+- **T3**: Removed stochastic composer from LLM prompt path (ADR-018). Composer is now emergency fallback only.
+- **T4**: Removed descoped `mutation_flag`/`sabotage_flag` from `createChaosState()`. Removed `shouldSabotage()`. Added chaos integration tests.
+- **T5**: Backfilled ADR-016 (SQLite), ADR-017 (Metrics/Sentry), ADR-018 (Composer emergency fallback). Fixed AGENTS.md stale references.
+- **T6**: CI smoke job now runs `npm run test:all` (smoke + integration). Integration test script uses glob pattern.
+
 ## [2.0.0] — 2026-04-07
 
 ### Architecture

@@ -1,10 +1,11 @@
 """
-packy_cog_engine.py — Packy v2.06 Response Composer (emergency fallback)
------------------------------------------------------------------------
+packy_cog_engine.py — Packy v2.07 Response Composer (cheap-LLM fallback)
+------------------------------------------------------------------------
 
 Packy's emergency response composer. When the primary LLM call fails, this
-composer produces a character-consistent fallback response using stochastic
-template filling — it does NOT call a language model.
+composer first attempts a cheap-LLM call (PACKY_COMPOSE_MODEL, default
+claude-haiku-4-5-20251001). If the cheap LLM also fails, it falls back to
+stochastic template filling via random.choice (the last-resort fallback).
 
 The primary response path is the LLM call in packy_endpoint.call_llm().
 This composer is invoked ONLY when call_llm raises an exception, providing
@@ -19,8 +20,12 @@ Public functions:
 """
 
 from __future__ import annotations
+import logging
+import os
 import random
 import textwrap
+
+logger = logging.getLogger("packy.cog_engine")
 
 # === Theme & tone snippets ===
 
@@ -76,12 +81,12 @@ PACKY_INTERNAL_MONOLOGUE = [
 
 class PackyCogEngine:
     """
-    Packy's emergency fallback composer.
+    Packy's emergency fallback composer with cheap-LLM fallback.
 
-    This class does not perform LLM reasoning; it classifies intent with a
-    simple rule set and fills pre-written templates with random theme/tone
-    snippets to produce a character-consistent fallback reply. It is invoked
-    ONLY when the primary LLM call fails (see packy_endpoint.py respond()).
+    When the primary LLM call fails, this composer first tries a cheap LLM
+    (PACKY_COMPOSE_MODEL) if an llm_fn is provided. If the cheap LLM also
+    fails (or no llm_fn), it falls back to stochastic template filling via
+    random.choice — the last-resort fallback.
 
     Public functions:
       - think(instruction)
@@ -91,23 +96,43 @@ class PackyCogEngine:
       - reflect_on_memory(memories)
     """
 
-    def __init__(self, brain=None):
-        self.brain = brain  # weak link to PackyBrain (optional but useful)
+    def __init__(self, brain=None, llm_fn=None):
+        self.brain = brain
+        self.llm_fn = llm_fn
+        self.compose_model = os.getenv("PACKY_COMPOSE_MODEL", "claude-haiku-4-5-20251001")
 
     # ------------------------------------------------------------
     #  High Level Composer Interface
     # ------------------------------------------------------------
 
-    def think(self, instruction: str) -> str:
+    async def think(self, instruction: str) -> str:
         """
         Compose a Packy-style reply:
-        1. Classify intent
-        2. Pick a response strategy
-        3. Fill the matching template
+        1. Try cheap-LLM fallback (if llm_fn provided)
+        2. Fall back to stochastic template filling
         """
+        if self.llm_fn is not None:
+            try:
+                result = await self._llm_fallback(instruction)
+                if result:
+                    return result
+            except Exception as e:
+                logger.warning("Cheap-LLM fallback failed, using template fallback: %s", e)
+
         interpretation = self.interpret(instruction)
         plan = self.plan(interpretation)
         return self._assemble_response(interpretation, plan)
+
+    async def _llm_fallback(self, user_text: str, max_tokens: int = 100) -> str:
+        """Call the cheap compose model via the injected llm_fn."""
+        system_prompt = (
+            f"{PACKY_CORE_ETHOS} "
+            "You are Packy, a grumpy old laptop. Respond in character, "
+            "brief and grumpy. Keep it under 100 words."
+        )
+        return await self.llm_fn(
+            system_prompt, user_text, max_tokens=max_tokens, model=self.compose_model
+        )
 
     # ------------------------------------------------------------
     #  Step 1 — Intent Classification

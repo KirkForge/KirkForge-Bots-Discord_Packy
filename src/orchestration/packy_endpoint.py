@@ -216,12 +216,23 @@ def get_cog_engine() -> Optional[PackyCogEngine]:
     if _cog_engine is None and PackyCogEngine:
         try:
             brain = get_packy_instance()
-            _cog_engine = PackyCogEngine(brain=brain)
-            logger.info("PackyCogEngine initialized successfully")
+            _cog_engine = PackyCogEngine(brain=brain, llm_fn=_compose_llm_fn)
+            logger.info("PackyCogEngine initialized successfully (with LLM fallback)")
         except Exception as e:
             logger.exception("Failed to initialize PackyCogEngine: %s", e)
             _cog_engine = None
     return _cog_engine
+
+
+async def _compose_llm_fn(
+    system_prompt: str, user_text: str, max_tokens: int = 100, model: str = None
+):
+    """Cheap-LLM fallback for PackyCogEngine. Raises on failure so the composer can fall back to templates."""
+    compose_model = model or os.getenv("PACKY_COMPOSE_MODEL", "claude-haiku-4-5-20251001")
+    result = await _call_claude(system_prompt, user_text, max_tokens, model=compose_model)
+    if not result:
+        raise ValueError("Empty response from compose model")
+    return result
 
 
 def build_metadata_header(state_dict: Dict[str, Any], guild_id: str = "") -> str:
@@ -258,7 +269,9 @@ def map_snark_to_float(snark_level_str: str) -> float:
     return snark_map.get(snark_level_str, 1.0)
 
 
-async def call_llm(system_prompt: str, user_text: str, max_tokens: int = 800) -> str:
+async def call_llm(
+    system_prompt: str, user_text: str, max_tokens: int = 800, model: str = None
+) -> str:
     """
     Call Claude or MiniMax API based on PRIMARY_ADAPTER setting.
 
@@ -266,13 +279,14 @@ async def call_llm(system_prompt: str, user_text: str, max_tokens: int = 800) ->
         system_prompt: System prompt for context and behavior
         user_text: User input text
         max_tokens: Maximum tokens in response (default: 800)
+        model: Override model name (default: uses CLAUDE_MODEL env or claude-haiku-4-5-20251001)
 
     Returns:
         LLM response text, or fallback string on error
     """
     try:
         if PRIMARY_ADAPTER == "claude":
-            return await _call_claude(system_prompt, user_text, max_tokens)
+            return await _call_claude(system_prompt, user_text, max_tokens, model=model)
         elif PRIMARY_ADAPTER == "minimax":
             return await _call_minimax(system_prompt, user_text, max_tokens)
         else:
@@ -283,7 +297,9 @@ async def call_llm(system_prompt: str, user_text: str, max_tokens: int = 800) ->
         return "My circuits are fried. Try again, meatbag."
 
 
-async def _call_claude(system_prompt: str, user_text: str, max_tokens: int) -> str:
+async def _call_claude(
+    system_prompt: str, user_text: str, max_tokens: int, model: str = None
+) -> str:
     """
     Call Claude API via Anthropic.
 
@@ -291,6 +307,7 @@ async def _call_claude(system_prompt: str, user_text: str, max_tokens: int) -> s
         system_prompt: System prompt for context
         user_text: User input text
         max_tokens: Maximum tokens in response
+        model: Override model name (default: uses CLAUDE_MODEL env)
 
     Returns:
         Claude response text
@@ -308,7 +325,7 @@ async def _call_claude(system_prompt: str, user_text: str, max_tokens: int) -> s
         "content-type": "application/json",
     }
 
-    model = os.getenv("CLAUDE_MODEL", "claude-haiku-4-5-20251001")
+    model = model or os.getenv("CLAUDE_MODEL", "claude-haiku-4-5-20251001")
     payload = {
         "model": model,
         "max_tokens": max_tokens,
@@ -637,15 +654,13 @@ async def respond(request: RespondRequest, req: Request) -> RespondResponse:
                 system_prompt, request.user_text, max_tokens=style_limit
             )
         except Exception as llm_err:
-            # Emergency fallback: use PackyCogEngine stochastic composer (ADR-018)
-            # This is honest — the LLM failed, so we provide a templated fallback,
-            # not a second LLM call (which would double cost and latency).
+            # Emergency fallback: try cheap-LLM fallback first, then template composer (ADR-018)
             logger.warning("LLM call failed; using emergency composer fallback: %s", llm_err)
             cog_engine = get_cog_engine()
             if cog_engine:
                 try:
-                    packy_response = cog_engine.think(request.user_text)
-                    cognition_text = "(Emergency fallback: LLM unavailable)"
+                    packy_response = await cog_engine.think(request.user_text)
+                    cognition_text = "(Emergency fallback: cheap-LLM or template)"
                 except Exception:
                     packy_response = "My circuits are fried. Try again, meatbag."
                     cognition_text = "(Emergency fallback also failed)"

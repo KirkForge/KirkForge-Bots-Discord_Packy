@@ -432,10 +432,10 @@ Add `src/bot/metrics.js` with a minimal interface: `counter(name, labels)`, `gau
 
 ---
 
-## ADR-018: Composer Emergency Fallback (Not LLM Prompt)
+## ADR-018: Composer Emergency Fallback (Cheap-LLM Fallback + Template Last-Resort)
 
 **Status:** Accepted  
-**Date:** 2026-07-22
+**Date:** 2026-07-23
 
 ### Context
 
@@ -443,11 +443,12 @@ Add `src/bot/metrics.js` with a minimal interface: `counter(name, labels)`, `gau
 
 ### Decision
 
-Remove the composer from the LLM prompt path entirely. The composer is now an **emergency fallback only**: when `call_llm()` raises an exception, `cog_engine.think()` produces a templated response. The chain is: LLM primary → composer emergency fallback → "circuits fried" error string. Docstrings updated to honestly label the composer as emergency-only.
+Remove the composer from the LLM prompt path entirely. The composer is now an **emergency fallback** that first attempts a cheap-LLM call (`PACKY_COMPOSE_MODEL`, default `claude-haiku-4-5-20251001`), then falls back to `random.choice` template filling if the cheap LLM also fails. The chain is: LLM primary → cheap-LLM fallback → template last-resort → "circuits fried" error string. The `llm_fn` is constructor-injected from `packy_endpoint.py` so the composer can call the cheap model without importing API client code.
 
 ### Consequences
 
 - LLM prompt is no longer polluted with stochastic template output.
-- On LLM failure, users still get a character-consistent fallback (not a bare error).
-- `cognition_text` in `RespondResponse` is set only when fallback fires.
-- Future work can wire `PACKY_COMPOSE_MODEL` for a cheaper-model fallback without changing this structure.
+- On LLM failure, users get a cheap-LLM response first, then template fallback.
+- `cognition_text` in `RespondResponse` indicates which fallback fired.
+- `PACKY_COMPOSE_MODEL` env var selects the cheap model (default: claude-haiku-4-5-20251001).
+- `PackyCogEngine.think()` is now async (awaited in `packy_endpoint.py`).

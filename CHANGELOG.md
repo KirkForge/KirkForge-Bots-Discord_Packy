@@ -1,5 +1,13 @@
 # Changelog — Gargoyle Packy
 
+## [2.2.0] — 2026-07-23
+
+### Architecture
+- **T1**: FF main to dev (6 commits from workorder-2026-07-22 landed on main).
+- **T2**: Cheap-LLM fallback wired into composer (ADR-018 updated). `PackyCogEngine.think()` now async; tries cheap LLM first, falls back to `random.choice` templates. Constructor-injected `llm_fn` from `packy_endpoint.py`.
+- **T3**: Remaining JSON-file persistence replaced with SQLite. `metrics.js` flushes to SQLite via `db.js`. `loreSelector.js` uses `readJsonFileAsync` from `db.js`. Gate: `grep "fs.readFile|fs.writeFile" src/bot/` → only in db.js.
+- **T4**: `@sentry/node ^9.0.0` added to package.json. Fixed ESM `require()` in `metrics.js` with `createRequire`. Added Sentry lazy-init smoke test.
+
 ## [2.1.0] — 2026-07-22
 
 ### Architecture

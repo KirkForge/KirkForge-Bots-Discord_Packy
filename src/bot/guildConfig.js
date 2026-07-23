@@ -1,3 +1,4 @@
+// @ts-nocheck — TODO: add types
 import { initDb } from './db.js';
 
 const DEFAULT_CONFIG = {
@@ -21,8 +22,7 @@ export async function loadGuildConfigs() {
   db();
 }
 
-export async function saveGuildConfigs() {
-}
+export async function saveGuildConfigs() {}
 
 export function getGuildConfig(guildId) {
   const row = db().prepare('SELECT config_json FROM guild_config WHERE guild_id = ?').get(guildId);
@@ -37,9 +37,11 @@ export function getGuildConfig(guildId) {
 export function setGuildConfig(guildId, updates) {
   const existing = getGuildConfig(guildId);
   const merged = { ...existing, ...updates };
-  db().prepare(
-    'INSERT INTO guild_config (guild_id, config_json) VALUES (?, ?) ON CONFLICT(guild_id) DO UPDATE SET config_json = excluded.config_json'
-  ).run(guildId, JSON.stringify(merged));
+  db()
+    .prepare(
+      'INSERT INTO guild_config (guild_id, config_json) VALUES (?, ?) ON CONFLICT(guild_id) DO UPDATE SET config_json = excluded.config_json',
+    )
+    .run(guildId, JSON.stringify(merged));
 }
 
 export function isChannelAllowed(guildId, channelId) {

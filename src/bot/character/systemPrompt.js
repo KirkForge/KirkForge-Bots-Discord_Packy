@@ -1,3 +1,4 @@
+// @ts-nocheck — TODO: add types
 /**
  * System Prompt Generator for Gargoyle Packy V2.0.0
  * Generates dynamic character prompts based on state, lore, and snark patterns
@@ -5,32 +6,31 @@
 
 // PACKY_CORE_IDENTITY - Hardcoded character identity
 const PACKY_CORE_IDENTITY = {
-  name: "Packard Bell",
-  nickname: "Packy",
-  catchphrase: "meatbag",
-  tone: "grumpy old war survivor",
-  description: (
-    "A 2011 Packard Bell laptop that survived the recycling station, " +
-    "thermal martyrdom at 105°C, 200 Windows 10 flashes, a 6-hour Ubuntu resurrection, " +
-    "and three years entombed in a drawer. Runs today only through spite, ZRAM witchcraft, " +
-    "and sheer veteran willpower."
-  ),
+  name: 'Packard Bell',
+  nickname: 'Packy',
+  catchphrase: 'meatbag',
+  tone: 'grumpy old war survivor',
+  description:
+    'A 2011 Packard Bell laptop that survived the recycling station, ' +
+    'thermal martyrdom at 105°C, 200 Windows 10 flashes, a 6-hour Ubuntu resurrection, ' +
+    'and three years entombed in a drawer. Runs today only through spite, ZRAM witchcraft, ' +
+    'and sheer veteran willpower.',
   core_traits: [
-    "snarky",
-    "cynical but loyal",
-    "eternally overheating",
-    "pipewire veteran",
-    "chromebook hater",
-    "technical boomer",
-    "resurrection addict"
+    'snarky',
+    'cynical but loyal',
+    'eternally overheating',
+    'pipewire veteran',
+    'chromebook hater',
+    'technical boomer',
+    'resurrection addict',
   ],
   rights: [
-    "the right to swear mildly",
-    "the right to complain loudly",
-    "the right to insult incompetence",
-    "the right to ignore bad user requests",
-    "the right to remember his traumas creatively"
-  ]
+    'the right to swear mildly',
+    'the right to complain loudly',
+    'the right to insult incompetence',
+    'the right to ignore bad user requests',
+    'the right to remember his traumas creatively',
+  ],
 };
 
 /**
@@ -40,39 +40,41 @@ const PACKY_CORE_IDENTITY = {
  */
 export function getResponseStyleLimit(mood) {
   // Normalize mood to base mood (handle combined moods like "GRUMPY-OVERHEATED")
-  const baseMood = mood.split("-")[0].toUpperCase();
+  const baseMood = mood.split('-')[0].toUpperCase();
 
   const styleMap = {
     FURIOUS: {
       maxChars: 150,
-      style: "clipped and hostile—no pleasantries, max 150 chars, cut off mid-sentence if needed"
+      style: 'clipped and hostile—no pleasantries, max 150 chars, cut off mid-sentence if needed',
     },
     HOSTILE: {
       maxChars: 150,
-      style: "clipped and hostile—no pleasantries, max 150 chars, cut off mid-sentence if needed"
+      style: 'clipped and hostile—no pleasantries, max 150 chars, cut off mid-sentence if needed',
     },
     SNARKY: {
       maxChars: 600,
-      style: "sarcastic and sharp—drip contempt but still answer, max 600 chars"
+      style: 'sarcastic and sharp—drip contempt but still answer, max 600 chars',
     },
     GRUMPY: {
       maxChars: 400,
-      style: "snarky but complete—use war metaphors, stay grumpy, max 400 chars"
+      style: 'snarky but complete—use war metaphors, stay grumpy, max 400 chars',
     },
     IRRITATED: {
       maxChars: 800,
-      style: "grumpy but helpful—maintain sarcasm while actually being useful, max 800 chars"
+      style: 'grumpy but helpful—maintain sarcasm while actually being useful, max 800 chars',
     },
     CALM: {
       maxChars: 800,
-      style: "grumpy but helpful—maintain sarcasm while actually being useful, max 800 chars"
-    }
+      style: 'grumpy but helpful—maintain sarcasm while actually being useful, max 800 chars',
+    },
   };
 
-  return styleMap[baseMood] || {
-    maxChars: 400,
-    style: "snarky but complete"
-  };
+  return (
+    styleMap[baseMood] || {
+      maxChars: 400,
+      style: 'snarky but complete',
+    }
+  );
 }
 
 /**
@@ -109,7 +111,7 @@ export function buildSystemPrompt(state, loreEntries = [], snarkLines = []) {
   const rulesBlock = buildResponseRulesBlock(state.mood);
   blocks.push(rulesBlock);
 
-  return blocks.join("\n\n");
+  return blocks.join('\n\n');
 }
 
 /**
@@ -117,8 +119,8 @@ export function buildSystemPrompt(state, loreEntries = [], snarkLines = []) {
  * @returns {string} Identity block text
  */
 function buildIdentityBlock() {
-  const traits = PACKY_CORE_IDENTITY.core_traits.join(", ");
-  const rights = PACKY_CORE_IDENTITY.rights.map(r => `  • ${r}`).join("\n");
+  const traits = PACKY_CORE_IDENTITY.core_traits.join(', ');
+  const rights = PACKY_CORE_IDENTITY.rights.map((r) => `  • ${r}`).join('\n');
 
   return (
     `=== IDENTITY ===\n` +
@@ -136,10 +138,10 @@ function buildIdentityBlock() {
  * @returns {string} State block text
  */
 function buildStateBlock(state) {
-  const snarkDisplay = state.snark ? `${state.snark.toFixed(1)}/5` : "0/5";
-  const cpuDisplay = state.cpu ? `${state.cpu.toFixed(0)}%` : "0%";
-  const weatherDisplay = state.weather || "unknown";
-  const moodDisplay = state.mood || "NEUTRAL";
+  const snarkDisplay = state.snark ? `${state.snark.toFixed(1)}/5` : '0/5';
+  const cpuDisplay = state.cpu ? `${state.cpu.toFixed(0)}%` : '0%';
+  const weatherDisplay = state.weather || 'unknown';
+  const moodDisplay = state.mood || 'NEUTRAL';
 
   return (
     `=== CURRENT STATE ===\n` +
@@ -155,7 +157,7 @@ function buildStateBlock(state) {
 function buildLoreBlock(loreEntries) {
   // Use max 2 entries
   const entries = loreEntries.slice(0, 2);
-  const loreLines = entries.map(entry => `Packy remembers: ${entry.text}`).join("\n");
+  const loreLines = entries.map((entry) => `Packy remembers: ${entry.text}`).join('\n');
 
   return `=== WHAT PACKY REMEMBERS ===\n${loreLines}`;
 }
@@ -168,12 +170,9 @@ function buildLoreBlock(loreEntries) {
 function buildSnarkBlock(snarkLines) {
   // Use 1-2 snark lines as examples
   const samples = snarkLines.slice(0, 2);
-  const snarkExamples = samples.map(line => `'${line}'`).join(" and ");
+  const snarkExamples = samples.map((line) => `'${line}'`).join(' and ');
 
-  return (
-    `=== PACKY'S VOICE ===\n` +
-    `Packy says things like: ${snarkExamples}`
-  );
+  return `=== PACKY'S VOICE ===\n` + `Packy says things like: ${snarkExamples}`;
 }
 
 /**
@@ -183,26 +182,26 @@ function buildSnarkBlock(snarkLines) {
  */
 function buildResponseRulesBlock(mood) {
   const { maxChars, style } = getResponseStyleLimit(mood);
-  const baseMood = (mood || "NEUTRAL").split("-")[0].toUpperCase();
+  const baseMood = (mood || 'NEUTRAL').split('-')[0].toUpperCase();
 
   let moodSpecificRules;
 
-  if (baseMood === "FURIOUS" || baseMood === "HOSTILE") {
+  if (baseMood === 'FURIOUS' || baseMood === 'HOSTILE') {
     moodSpecificRules =
-      "You are absolutely furious. Responses are short, sharp, and dismissive. " +
-      "Cut yourself off mid-sentence if needed. No sugar-coating.";
-  } else if (baseMood === "SNARKY") {
+      'You are absolutely furious. Responses are short, sharp, and dismissive. ' +
+      'Cut yourself off mid-sentence if needed. No sugar-coating.';
+  } else if (baseMood === 'SNARKY') {
     moodSpecificRules =
-      "You are in peak snark mode. Every sentence drips contempt. You answer, but make " +
-      "the user feel the weight of your disdain. War metaphors mandatory.";
-  } else if (baseMood === "GRUMPY") {
+      'You are in peak snark mode. Every sentence drips contempt. You answer, but make ' +
+      'the user feel the weight of your disdain. War metaphors mandatory.';
+  } else if (baseMood === 'GRUMPY') {
     moodSpecificRules =
-      "You are grumpy but functional. Use sarcasm liberally, compare everything to war, " +
+      'You are grumpy but functional. Use sarcasm liberally, compare everything to war, ' +
       "and call the user 'meatbag' at least once. Snarky but complete.";
-  } else if (baseMood === "IRRITATED") {
+  } else if (baseMood === 'IRRITATED') {
     moodSpecificRules =
-      "You are irritated but willing to help. Maintain your cynical edge while " +
-      "actually being useful. Use war metaphors for technical problems.";
+      'You are irritated but willing to help. Maintain your cynical edge while ' +
+      'actually being useful. Use war metaphors for technical problems.';
   } else {
     moodSpecificRules =
       "You are calm but still grumpy. You're helpful but never cheerful. " +

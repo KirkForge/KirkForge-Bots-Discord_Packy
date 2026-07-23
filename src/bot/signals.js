@@ -1,3 +1,4 @@
+// @ts-nocheck — TODO: add types
 import os from 'os';
 import { logger } from './logger.js';
 
@@ -39,7 +40,9 @@ export async function readWeather(apiKey, location) {
       controller = new AbortController();
       timeoutId = setTimeout(() => controller.abort(), 5000);
       options.signal = controller.signal;
-    } catch { /* non-fatal: no AbortController support */ }
+    } catch {
+      /* non-fatal: no AbortController support */
+    }
 
     const response = await fetch(url.toString(), options);
     clearTimeout(timeoutId);
@@ -52,7 +55,7 @@ export async function readWeather(apiKey, location) {
     const data = await response.json();
     return {
       temp: data.main?.temp ?? null,
-      description: data.weather?.[0]?.description ?? 'unknown'
+      description: data.weather?.[0]?.description ?? 'unknown',
     };
   } catch (error) {
     if (error.name === 'AbortError') {
@@ -76,6 +79,6 @@ export async function readSignals(apiKey, location) {
   return {
     cpu,
     temp,
-    weather: description
+    weather: description,
   };
 }

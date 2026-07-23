@@ -34,3 +34,6 @@ ignore = ["E402"]  # sys.path.insert pattern requires imports after path setup
 
 [tool.pytest.ini_options]
 testpaths = ["test", "tests"]
+
+[tool.mypy]
+ignore_missing_imports = true

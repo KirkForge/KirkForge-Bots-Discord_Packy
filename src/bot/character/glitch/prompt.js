@@ -26,7 +26,7 @@ export function glitchResponse(responseText) {
   // Occasionally inject encoding errors
   if (Math.random() < 0.05) {
     const glitchPatterns = [
-      () => responseText.replace(/[aeiou]/gi, () => Math.random() > 0.5 ? '?' : ''),
+      () => responseText.replace(/[aeiou]/gi, () => (Math.random() > 0.5 ? '?' : '')),
       () => responseText.slice(0, Math.floor(responseText.length * 0.7)) + '... [CORRUPTED]',
       () => responseText.split('').reverse().join(''),
       () => '[ENCODING ERROR]\n' + btoa(responseText.slice(0, 20)) + '\n[/ENCODING ERROR]',

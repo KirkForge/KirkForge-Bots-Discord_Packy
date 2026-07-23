@@ -14,7 +14,14 @@ export async function handleLoreCommand(interaction, modules) {
     const snarkLevel = computeSnark(0, 20);
     const mood = computeMood(snarkLevel);
 
-    const loreEntries = selectLore(lorebook, topic || 'general', mood, 2, conceptGraphData, categoryConceptsData);
+    const loreEntries = selectLore(
+      lorebook,
+      topic || 'general',
+      mood,
+      2,
+      conceptGraphData,
+      categoryConceptsData,
+    );
 
     if (!loreEntries || loreEntries.length === 0) {
       return await interaction.editReply('Packy has no memories matching that topic, meatbag.');
@@ -23,7 +30,7 @@ export async function handleLoreCommand(interaction, modules) {
     let categoryName = 'Archives';
     if (lorebook.categories) {
       for (const [catName, entries] of Object.entries(lorebook.categories)) {
-        if (Array.isArray(entries) && entries.some(e => loreEntries.includes(e))) {
+        if (Array.isArray(entries) && entries.some((e) => loreEntries.includes(e))) {
           categoryName = catName;
           break;
         }
@@ -38,10 +45,16 @@ export async function handleLoreCommand(interaction, modules) {
 
     await interaction.editReply({ embeds: [embed] });
   } catch (error) {
-    logger.error('Error handling /lore command:', { error: error instanceof Error ? error.message : error });
+    logger.error('Error handling /lore command:', {
+      error: error instanceof Error ? error.message : error,
+    });
     try {
-      await interaction.editReply(withCode(ERR.LORE, 'Something broke in my circuits. Very embarrassing.'));
-    } catch { /* non-fatal */ }
+      await interaction.editReply(
+        withCode(ERR.LORE, 'Something broke in my circuits. Very embarrassing.'),
+      );
+    } catch {
+      /* non-fatal */
+    }
   }
 }
 
@@ -83,7 +96,7 @@ export async function handleWarCommand(interaction, modules) {
       new ButtonBuilder()
         .setCustomId('war_another')
         .setLabel('Another one')
-        .setStyle(ButtonStyle.Danger)
+        .setStyle(ButtonStyle.Danger),
     );
 
     const embed = new EmbedBuilder()
@@ -95,10 +108,16 @@ export async function handleWarCommand(interaction, modules) {
 
     await interaction.editReply({ embeds: [embed], components: [warButton] });
   } catch (error) {
-    logger.error('Error handling /war command:', { error: error instanceof Error ? error.message : error });
+    logger.error('Error handling /war command:', {
+      error: error instanceof Error ? error.message : error,
+    });
     try {
-      await interaction.editReply(withCode(ERR.LORE, 'Something broke in my circuits. Very embarrassing.'));
-    } catch { /* non-fatal */ }
+      await interaction.editReply(
+        withCode(ERR.LORE, 'Something broke in my circuits. Very embarrassing.'),
+      );
+    } catch {
+      /* non-fatal */
+    }
   }
 }
 
@@ -124,7 +143,11 @@ export async function handleWarButton(interaction, modules) {
     }
 
     if (allEntries.length === 0) {
-      return await interaction.editReply({ content: 'Memory banks empty.', embeds: [], components: [] });
+      return await interaction.editReply({
+        content: 'Memory banks empty.',
+        embeds: [],
+        components: [],
+      });
     }
 
     const warStory = allEntries[Math.floor(Math.random() * allEntries.length)];
@@ -133,7 +156,7 @@ export async function handleWarButton(interaction, modules) {
       new ButtonBuilder()
         .setCustomId('war_another')
         .setLabel('Another one')
-        .setStyle(ButtonStyle.Danger)
+        .setStyle(ButtonStyle.Danger),
     );
 
     const embed = new EmbedBuilder()
@@ -145,9 +168,13 @@ export async function handleWarButton(interaction, modules) {
 
     await interaction.editReply({ embeds: [embed], components: [warButton] });
   } catch (error) {
-    logger.error('Error handling war button:', { error: error instanceof Error ? error.message : error });
+    logger.error('Error handling war button:', {
+      error: error instanceof Error ? error.message : error,
+    });
     try {
       await interaction.editReply(withCode(ERR.LORE, 'War story engine misfired.'));
-    } catch { /* non-fatal */ }
+    } catch {
+      /* non-fatal */
+    }
   }
 }

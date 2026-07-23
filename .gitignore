@@ -19,6 +19,10 @@ logs/
 dist/
 build/
 
+# Coverage
+.coverage
+coverage.xml
+
 # Data (runtime-generated, not committed)
 data/pending_lore/
 *.db
@@ -52,5 +56,4 @@ credentials.json
 
 # Runtime / generated config (do not commit)
 data/guild_config.json
-tsconfig.json
 data/metrics.json

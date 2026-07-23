@@ -15,7 +15,9 @@ export async function handleAdminCommand(interaction, modules) {
     const guildId = interaction.guildId;
     const userId = interaction.user.id;
 
-    logAudit({ type: 'admin', subcommand, guildId, userId, userTag: interaction.user.tag }).catch(() => {});
+    logAudit({ type: 'admin', subcommand, guildId, userId, userTag: interaction.user.tag }).catch(
+      () => {},
+    );
 
     if (subcommand === 'mute') {
       setGuildConfig(guildId, { botMuted: true });
@@ -66,7 +68,7 @@ export async function handleAdminCommand(interaction, modules) {
       const hasApiKey = !!process.env.OPENWEATHER_API_KEY;
       const keyWarning = hasApiKey
         ? ''
-        : '\n\n⚠️ `OPENWEATHER_API_KEY` is not set in `.env` — weather data won\'t load until you add it.';
+        : "\n\n⚠️ `OPENWEATHER_API_KEY` is not set in `.env` — weather data won't load until you add it.";
       return await interaction.editReply(`Weather location set to **${city}**.${keyWarning}`);
     }
 
@@ -75,9 +77,13 @@ export async function handleAdminCommand(interaction, modules) {
       const { selectCharacterByName } = await import('../../character/randomizer.js');
       const selected = selectCharacterByName(charName);
       if (!selected) {
-        return await interaction.editReply(`Character '${charName}' not found. Available: Vernon, KRONOS, Glitch, Sunjinwo, Packy`);
+        return await interaction.editReply(
+          `Character '${charName}' not found. Available: Vernon, KRONOS, Glitch, Sunjinwo, Packy`,
+        );
       }
-      return await interaction.editReply(`Switched to **${selected.name}**: ${selected.description}`);
+      return await interaction.editReply(
+        `Switched to **${selected.name}**: ${selected.description}`,
+      );
     }
 
     if (subcommand === 'family-friendly') {
@@ -85,7 +91,9 @@ export async function handleAdminCommand(interaction, modules) {
       setGuildConfig(guildId, { familyFriendly: enabled });
       await saveGuildConfigs();
       const status = enabled ? 'ON' : 'OFF';
-      return await interaction.editReply(`Family-friendly mode: **${status}**. ${enabled ? 'Snark sanitized.' : 'Full snark enabled.'}`);
+      return await interaction.editReply(
+        `Family-friendly mode: **${status}**. ${enabled ? 'Snark sanitized.' : 'Full snark enabled.'}`,
+      );
     }
 
     if (subcommand === 'clear-ratelimit') {
@@ -100,9 +108,15 @@ export async function handleAdminCommand(interaction, modules) {
 
     return await interaction.editReply('Unknown admin subcommand.');
   } catch (error) {
-    logger.error('Error handling /admin command:', { error: error instanceof Error ? error.message : error });
+    logger.error('Error handling /admin command:', {
+      error: error instanceof Error ? error.message : error,
+    });
     try {
-      await interaction.editReply(withCode(ERR.ADMIN, 'Something broke in my circuits. Very embarrassing.'));
-    } catch { /* non-fatal */ }
+      await interaction.editReply(
+        withCode(ERR.ADMIN, 'Something broke in my circuits. Very embarrassing.'),
+      );
+    } catch {
+      /* non-fatal */
+    }
   }
 }

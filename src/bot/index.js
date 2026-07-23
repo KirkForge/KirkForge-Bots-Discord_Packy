@@ -1,3 +1,4 @@
+// @ts-nocheck — TODO: add types
 import { Client, GatewayIntentBits } from 'discord.js';
 import dotenv from 'dotenv';
 import path from 'path';
@@ -18,7 +19,12 @@ import { readSignals } from './signals.js';
 import { logger } from './logger.js';
 import { metrics, startMetricsFlush, stopMetricsFlush } from './metrics.js';
 import { withCode, ERR } from './commands/handlers/errors.js';
-import { loadChaosState, startAutoSave as startChaosAutoSave, saveChaosState, stopAutoSave as stopChaosAutoSave } from './chaosStatePersist.js';
+import {
+  loadChaosState,
+  startAutoSave as startChaosAutoSave,
+  saveChaosState,
+  stopAutoSave as stopChaosAutoSave,
+} from './chaosStatePersist.js';
 import { initDb } from './db.js';
 import { filterFamilyFriendly } from './character/contentFilter.js';
 
@@ -30,8 +36,23 @@ import { filterFamilyFriendly } from './character/contentFilter.js';
 import { isRateLimited } from './rateLimiter.js';
 
 // Import user state and guild config
-import { loadState, updateUserState, startAutoSave as startStateAutoSave, saveState, stopAutoSave as stopStateAutoSave } from './userState.js';
-import { loadGuildConfigs, getGuildConfig, isChannelAllowed, isGuildMuted, startAutoSave as startConfigAutoSave, setGuildConfig, saveGuildConfigs, stopAutoSave as stopConfigAutoSave } from './guildConfig.js';
+import {
+  loadState,
+  updateUserState,
+  startAutoSave as startStateAutoSave,
+  saveState,
+  stopAutoSave as stopStateAutoSave,
+} from './userState.js';
+import {
+  loadGuildConfigs,
+  getGuildConfig,
+  isChannelAllowed,
+  isGuildMuted,
+  startAutoSave as startConfigAutoSave,
+  setGuildConfig,
+  saveGuildConfigs,
+  stopAutoSave as stopConfigAutoSave,
+} from './guildConfig.js';
 
 // Import command handlers
 import {
@@ -90,10 +111,10 @@ async function callMicroservice(userText, guildId, userId, retries = 2) {
     try {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), timeout);
-      
+
       const headers = { 'Content-Type': 'application/json' };
       if (AUTH_SECRET) headers['Authorization'] = `Bearer ${AUTH_SECRET}`;
-      
+
       const response = await fetch(`http://localhost:${COGNITION_PORT}/respond`, {
         method: 'POST',
         headers,
@@ -108,13 +129,18 @@ async function callMicroservice(userText, guildId, userId, retries = 2) {
 
       if (!response.ok) {
         logger.error(`Microservice error: ${response.status}`);
-        metrics.error(new Error(`Microservice error: ${response.status}`), { status: response.status });
+        metrics.error(new Error(`Microservice error: ${response.status}`), {
+          status: response.status,
+        });
         if (attempt < retries) {
-          await new Promise(r => setTimeout(r, 200 * Math.pow(2, attempt)));
+          await new Promise((r) => setTimeout(r, 200 * Math.pow(2, attempt)));
           continue;
         }
-      return withCode(ERR.MICROSERVICE, 'I\'m having trouble thinking right now. Try again in a moment.');
-    }
+        return withCode(
+          ERR.MICROSERVICE,
+          "I'm having trouble thinking right now. Try again in a moment.",
+        );
+      }
 
       const data = await response.json();
       return data.result || withCode(ERR.MICROSERVICE, 'Hmm, I got nothing.');
@@ -122,16 +148,22 @@ async function callMicroservice(userText, guildId, userId, retries = 2) {
       logger.error(`Microservice attempt ${attempt + 1} failed:`, { error: error.message });
       metrics.error(error, { attempt: attempt + 1 });
       if (attempt < retries) {
-        await new Promise(r => setTimeout(r, 200 * Math.pow(2, attempt)));
+        await new Promise((r) => setTimeout(r, 200 * Math.pow(2, attempt)));
         continue;
       }
       if (error.name === 'AbortError') {
         return withCode(ERR.TIMEOUT, 'My brain timed out. Give me a moment to recover.');
       }
-      return withCode(ERR.COGNITION_DOWN, 'My brain is offline. Check if the cognition service is running.');
+      return withCode(
+        ERR.COGNITION_DOWN,
+        'My brain is offline. Check if the cognition service is running.',
+      );
     }
   }
-  return withCode(ERR.COGNITION_DOWN, 'My brain is offline. Check if the cognition service is running.');
+  return withCode(
+    ERR.COGNITION_DOWN,
+    'My brain is offline. Check if the cognition service is running.',
+  );
 }
 
 // ponytail: callDirect (the JS-side full cognition pipeline + direct adapter
@@ -213,7 +245,9 @@ async function handleMessage(message) {
   // Show typing indicator
   try {
     await message.channel.sendTyping();
-  } catch { /* non-fatal: typing indicator */ }
+  } catch {
+    /* non-fatal: typing indicator */
+  }
 
   // Extract user text (remove mention or prefix)
   let userText = message.content.trim();
@@ -241,7 +275,9 @@ async function handleMessage(message) {
         content: `Your message was trimmed to ${MAX_INPUT_CHARS} characters before I processed it.`,
         allowedMentions: { repliedUser: false },
       });
-    } catch { /* non-fatal */ }
+    } catch {
+      /* non-fatal */
+    }
   }
 
   try {
@@ -277,12 +313,18 @@ async function handleMessage(message) {
       if (message.guildId) {
         updateUserState(message.guildId, message.author.id, {});
       }
-    } catch { /* non-fatal */ }
+    } catch {
+      /* non-fatal */
+    }
 
     return;
   } catch (error) {
-    logger.error('Error handling message', { error: error instanceof Error ? error.message : error });
-    metrics.error(error instanceof Error ? error : new Error(String(error)), { source: 'messageHandler' });
+    logger.error('Error handling message', {
+      error: error instanceof Error ? error.message : error,
+    });
+    metrics.error(error instanceof Error ? error : new Error(String(error)), {
+      source: 'messageHandler',
+    });
     return message.reply({
       content: withCode(ERR.UNKNOWN, 'Something broke in my circuits. Very embarrassing.'),
       allowedMentions: { repliedUser: false },
@@ -339,24 +381,24 @@ async function handleInteraction(interaction) {
     const handlerPromise = (async () => {
       const command = interaction.commandName;
 
-      if (command === 'packy')  return await handlePackyCommand(interaction, modules);
-      if (command === 'mood')   return await handleMoodCommand(interaction, modules);
-      if (command === 'lore')   return await handleLoreCommand(interaction, modules);
-      if (command === 'war')    return await handleWarCommand(interaction, modules);
-      if (command === 'admin')  return await handleAdminCommand(interaction, modules);
-      if (command === 'snark')  return await handleSnarkCommand(interaction, modules);
+      if (command === 'packy') return await handlePackyCommand(interaction, modules);
+      if (command === 'mood') return await handleMoodCommand(interaction, modules);
+      if (command === 'lore') return await handleLoreCommand(interaction, modules);
+      if (command === 'war') return await handleWarCommand(interaction, modules);
+      if (command === 'admin') return await handleAdminCommand(interaction, modules);
+      if (command === 'snark') return await handleSnarkCommand(interaction, modules);
       if (command === 'status') return await handleStatusCommand(interaction, modules);
-      if (command === 'chaos')  return await handleChaosCommand(interaction, modules);
-      if (command === 'help')   return await handleHelpCommand(interaction, modules);
+      if (command === 'chaos') return await handleChaosCommand(interaction, modules);
+      if (command === 'help') return await handleHelpCommand(interaction, modules);
 
       // Radio commands
       if (command === 'radio') {
         const sub = interaction.options.getSubcommand();
-        if (sub === 'play')       return await handleRadioPlay(interaction);
-        if (sub === 'stop')       return await handleRadioStop(interaction);
-        if (sub === 'stations')   return await handleRadioStations(interaction);
+        if (sub === 'play') return await handleRadioPlay(interaction);
+        if (sub === 'stop') return await handleRadioStop(interaction);
+        if (sub === 'stations') return await handleRadioStations(interaction);
         if (sub === 'nowplaying') return await handleRadioNowPlaying(interaction);
-        if (sub === 'volume')     return await handleRadioVolume(interaction);
+        if (sub === 'volume') return await handleRadioVolume(interaction);
       }
 
       return await interaction.editReply('This command is not yet implemented.');
@@ -366,15 +408,23 @@ async function handleInteraction(interaction) {
     await Promise.race([
       handlerPromise,
       new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Command handler timed out')), TIMEOUT_MS)
+        setTimeout(() => reject(new Error('Command handler timed out')), TIMEOUT_MS),
       ),
     ]);
   } catch (error) {
-    logger.error('Error handling interaction', { error: error instanceof Error ? error.message : error });
-    metrics.error(error instanceof Error ? error : new Error(String(error)), { source: 'interactionHandler' });
+    logger.error('Error handling interaction', {
+      error: error instanceof Error ? error.message : error,
+    });
+    metrics.error(error instanceof Error ? error : new Error(String(error)), {
+      source: 'interactionHandler',
+    });
     try {
-      await interaction.editReply(withCode(ERR.UNKNOWN, 'Something broke in my circuits. Very embarrassing.'));
-    } catch { /* non-fatal: reply already failed */ }
+      await interaction.editReply(
+        withCode(ERR.UNKNOWN, 'Something broke in my circuits. Very embarrassing.'),
+      );
+    } catch {
+      /* non-fatal: reply already failed */
+    }
   } finally {
     trackInFlight(-1);
   }
@@ -394,9 +444,9 @@ const client = new Client({
 // Ready event - load lorebook and initialize
 client.on('ready', async () => {
   const activeCharacter = getCurrentCharacter();
-  logger.info('Bot ready', { 
-    tag: client.user.tag, 
-    guilds: client.guilds.cache.size, 
+  logger.info('Bot ready', {
+    tag: client.user.tag,
+    guilds: client.guilds.cache.size,
     mode: BOT_MODE,
     adapter: PRIMARY_ADAPTER,
     personality: activeCharacter?.name,
@@ -404,7 +454,10 @@ client.on('ready', async () => {
   });
 
   if (BOT_MODE === 'microservice') {
-    logger.info('Cognition service config', { port: COGNITION_PORT, authConfigured: !!AUTH_SECRET });
+    logger.info('Cognition service config', {
+      port: COGNITION_PORT,
+      authConfigured: !!AUTH_SECRET,
+    });
   }
 
   // Load lorebook for active character
@@ -427,7 +480,10 @@ client.on('ready', async () => {
     const conceptData = await loadConceptGraph(conceptGraphPath, categoryConceptsPath);
     conceptGraphData = conceptData.conceptGraph;
     categoryConceptsData = conceptData.categoryConceptsMap;
-    logger.info('Concept graph loaded', { graphKeys: Object.keys(conceptGraphData).length, categoryConcepts: Object.keys(categoryConceptsData).length });
+    logger.info('Concept graph loaded', {
+      graphKeys: Object.keys(conceptGraphData).length,
+      categoryConcepts: Object.keys(categoryConceptsData).length,
+    });
   } catch (error) {
     logger.error('Failed to load concept graph', { error: error.message });
     metrics.error(error, { source: 'conceptGraph' });
@@ -481,16 +537,28 @@ async function gracefulShutdown(signal) {
   // Wait for in-flight operations with 5s deadline
   const deadline = Date.now() + 5000;
   while (_inFlightCount > 0 && Date.now() < deadline) {
-    await new Promise(r => setTimeout(r, 100));
+    await new Promise((r) => setTimeout(r, 100));
   }
   if (_inFlightCount > 0) {
     logger.warn('Proceeding to shutdown with in-flight operations', { count: _inFlightCount });
   }
 
   // Flush pending saves
-  try { await saveGuildConfigs(); } catch { /* non-fatal */ }
-  try { await saveState(); } catch { /* non-fatal */ }
-  try { await saveChaosState(); } catch { /* non-fatal */ }
+  try {
+    await saveGuildConfigs();
+  } catch {
+    /* non-fatal */
+  }
+  try {
+    await saveState();
+  } catch {
+    /* non-fatal */
+  }
+  try {
+    await saveChaosState();
+  } catch {
+    /* non-fatal */
+  }
 
   await client.destroy();
   process.exit(0);
@@ -516,18 +584,22 @@ let unhandledRejectionCount = 0;
 const REJECTION_ALERT_THRESHOLD = 5;
 process.on('unhandledRejection', (reason, _promise) => {
   unhandledRejectionCount++;
-  logger.error('Unhandled rejection', { 
+  logger.error('Unhandled rejection', {
     reason: reason instanceof Error ? reason.message : String(reason),
     stack: reason instanceof Error ? reason.stack : null,
     count: unhandledRejectionCount,
   });
-  metrics.error(reason instanceof Error ? reason : new Error(String(reason)), { source: 'unhandledRejection', count: unhandledRejectionCount });
+  metrics.error(reason instanceof Error ? reason : new Error(String(reason)), {
+    source: 'unhandledRejection',
+    count: unhandledRejectionCount,
+  });
   if (unhandledRejectionCount === REJECTION_ALERT_THRESHOLD) {
-    logger.emit && logger.emit('alert', {
-      type: 'unhandledRejectionThreshold',
-      message: `${REJECTION_ALERT_THRESHOLD} unhandled rejections reached — investigate memory leaks or dangling promises`,
-      count: unhandledRejectionCount,
-    });
+    logger.emit &&
+      logger.emit('alert', {
+        type: 'unhandledRejectionThreshold',
+        message: `${REJECTION_ALERT_THRESHOLD} unhandled rejections reached — investigate memory leaks or dangling promises`,
+        count: unhandledRejectionCount,
+      });
   }
 });
 

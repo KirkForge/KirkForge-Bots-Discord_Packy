@@ -10,10 +10,11 @@ export async function logAudit(entry) {
   try {
     const dir = path.dirname(AUDIT_FILE);
     await fs.mkdir(dir, { recursive: true });
-    const line = JSON.stringify({
-      timestamp: new Date().toISOString(),
-      ...entry,
-    }) + '\n';
+    const line =
+      JSON.stringify({
+        timestamp: new Date().toISOString(),
+        ...entry,
+      }) + '\n';
     await fs.appendFile(AUDIT_FILE, line, 'utf-8');
   } catch {
     // non-fatal

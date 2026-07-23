@@ -1,3 +1,4 @@
+// @ts-nocheck — TODO: add types
 // Shared rate limiter — Redis-backed for PM2 cluster mode, in-memory fallback for single process
 // Prevents users from bypassing the limit by mixing !packy mentions and /packy slash commands
 
@@ -5,7 +6,7 @@ import { logger } from './logger.js';
 
 const userRateLimits = new Map(); // fallback in-memory
 const RATE_LIMIT_WINDOW = 10000; // 10 seconds
-const RATE_LIMIT_MAX = 3;        // max 3 requests per window
+const RATE_LIMIT_MAX = 3; // max 3 requests per window
 
 // Redis client (lazy init)
 let redisClient = null;
@@ -35,7 +36,9 @@ async function getRedisClient() {
     await redisClient.ping();
     return redisClient;
   } catch (error) {
-    logger.warn('Redis unavailable, falling back to in-memory rate limiter', { error: error.message });
+    logger.warn('Redis unavailable, falling back to in-memory rate limiter', {
+      error: error.message,
+    });
     useRedis = false;
     return null;
   }
@@ -127,7 +130,9 @@ export async function getRateLimitStatus(userId) {
           remaining: Math.max(0, RATE_LIMIT_MAX - parseInt(count || '0', 10)),
           resetMs: (ttl || 0) * 1000,
         };
-      } catch { /* non-fatal: fall through to memory */ }
+      } catch {
+        /* non-fatal: fall through to memory */
+      }
     }
   }
 

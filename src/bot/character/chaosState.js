@@ -1,12 +1,13 @@
+// @ts-nocheck — TODO: add types
 // Controlled Chaos Layer - implements non-deterministic behavior under strict guardrails
 // Per ADR-008: Controlled Chaos Layer
 
 // Note: state is now persisted via chaosStatePersist.js
 // Import helpers from persist module
-import { 
-  getLastInjection, 
-  setLastInjection, 
-  getGuildTargetLocks, 
+import {
+  getLastInjection,
+  setLastInjection,
+  getGuildTargetLocks,
   setTargetLock,
 } from '../chaosStatePersist.js';
 
@@ -16,7 +17,7 @@ import {
  */
 export function createChaosState() {
   return {
-    chaos_score: 0,           // float 0-1, derived from mood and snark
+    chaos_score: 0, // float 0-1, derived from mood and snark
   };
 }
 
@@ -38,7 +39,7 @@ export function computeChaosScore(mood, snarkLevel) {
     calm: 0.1,
   };
   const baseChaos = moodChaos[mood] || 0.5;
-  const combined = (baseChaos * 0.6) + (snarkFactor * 0.4);
+  const combined = baseChaos * 0.6 + snarkFactor * 0.4;
   return Math.min(combined, 1.0);
 }
 
@@ -126,7 +127,7 @@ export function recordInjection(channelId) {
  */
 export function _clearAllChaosState() {
   // Import dynamically to avoid circular
-  import('./chaosStatePersist.js').then(m => {
+  import('./chaosStatePersist.js').then((m) => {
     m.saveChaosState();
   });
 }

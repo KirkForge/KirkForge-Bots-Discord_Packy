@@ -1,3 +1,4 @@
+// @ts-nocheck — TODO: add types
 import { EmbedBuilder } from 'discord.js';
 import { computeSnark, computeMood } from '../../character/mood.js';
 import { getMixedSnark, getSnarkLines } from '../../character/snarkBank.js';
@@ -13,7 +14,9 @@ export async function handlePackyCommand(interaction, modules) {
   const userText = interaction.options.getString('message');
 
   if (!userText) {
-    return await interaction.editReply('You gonna say something, or are we just staring at each other?');
+    return await interaction.editReply(
+      'You gonna say something, or are we just staring at each other?',
+    );
   }
 
   if (await isRateLimited(interaction.user.id)) {
@@ -33,15 +36,23 @@ export async function handlePackyCommand(interaction, modules) {
     if (modules.updateUserState && interaction.guildId) {
       try {
         modules.updateUserState(interaction.guildId, interaction.user.id, {});
-      } catch { /* non-fatal */ }
+      } catch {
+        /* non-fatal */
+      }
     }
   } catch (error) {
-    logger.error('Error handling /packy command:', { error: error instanceof Error ? error.message : error });
+    logger.error('Error handling /packy command:', {
+      error: error instanceof Error ? error.message : error,
+    });
     metrics.counter('command.failed', { name: 'packy' });
     metrics.error(error instanceof Error ? error : new Error(String(error)), { cmd: 'packy' });
     try {
-      await interaction.editReply(withCode(ERR.API_FAIL, 'Something broke in my circuits. Very embarrassing.'));
-    } catch { /* non-fatal */ }
+      await interaction.editReply(
+        withCode(ERR.API_FAIL, 'Something broke in my circuits. Very embarrassing.'),
+      );
+    } catch {
+      /* non-fatal */
+    }
   }
 }
 
@@ -57,10 +68,7 @@ export async function handleMoodCommand(interaction, modules) {
 
     if (readSignals) {
       try {
-        signals = await readSignals(
-          process.env.OPENWEATHER_API_KEY,
-          weatherLocation
-        );
+        signals = await readSignals(process.env.OPENWEATHER_API_KEY, weatherLocation);
       } catch {
         logger.warn('Failed to read signals (signals module unavailable)');
       }
@@ -91,24 +99,34 @@ export async function handleMoodCommand(interaction, modules) {
         { name: 'Mood', value: mood.toUpperCase(), inline: true },
         { name: 'Snark Level', value: `${snarkBar} ${snarkLevel.toFixed(1)}/5`, inline: true },
         { name: 'CPU Load', value: `${signals.cpu.toFixed(1)}%`, inline: true },
-        { name: 'Temperature', value: signals.temp != null ? `${signals.temp.toFixed(1)}°C` : 'N/A', inline: true },
+        {
+          name: 'Temperature',
+          value: signals.temp != null ? `${signals.temp.toFixed(1)}°C` : 'N/A',
+          inline: true,
+        },
         { name: 'Weather', value: signals.weather || 'unknown', inline: true },
-        { name: 'Status', value: statusQuip, inline: false }
+        { name: 'Status', value: statusQuip, inline: false },
       )
       .setFooter({
         text: weatherConfigured
           ? `Packy v2.0.0 — still running on spite · ${weatherLocation}`
-          : 'Packy v2.0.0 · Weather off — use /admin set-location <city> then add OPENWEATHER_API_KEY to .env'
+          : 'Packy v2.0.0 · Weather off — use /admin set-location <city> then add OPENWEATHER_API_KEY to .env',
       })
       .setTimestamp();
 
     await interaction.editReply({ embeds: [embed] });
   } catch (error) {
-    logger.error('Error handling /mood command:', { error: error instanceof Error ? error.message : error });
+    logger.error('Error handling /mood command:', {
+      error: error instanceof Error ? error.message : error,
+    });
     metrics.counter('command.failed', { name: 'mood' });
     try {
-      await interaction.editReply(withCode(ERR.API_FAIL, 'Something broke in my circuits. Very embarrassing.'));
-    } catch { /* non-fatal */ }
+      await interaction.editReply(
+        withCode(ERR.API_FAIL, 'Something broke in my circuits. Very embarrassing.'),
+      );
+    } catch {
+      /* non-fatal */
+    }
   }
 }
 
@@ -124,11 +142,10 @@ export async function handleSnarkCommand(interaction, _modules) {
       lines = getMixedSnark(1);
     }
 
-    const line = (lines && lines.length > 0) ? lines[0] : "I've got nothing. Which is somehow your fault.";
+    const line =
+      lines && lines.length > 0 ? lines[0] : "I've got nothing. Which is somehow your fault.";
 
-    const categoryLabel = category && category !== 'random'
-      ? category.replace(/_/g, ' ')
-      : 'mixed';
+    const categoryLabel = category && category !== 'random' ? category.replace(/_/g, ' ') : 'mixed';
 
     const embed = new EmbedBuilder()
       .setColor(COLORS.SNARK)
@@ -138,11 +155,15 @@ export async function handleSnarkCommand(interaction, _modules) {
 
     await interaction.editReply({ embeds: [embed] });
   } catch (error) {
-    logger.error('Error handling /snark command:', { error: error instanceof Error ? error.message : error });
+    logger.error('Error handling /snark command:', {
+      error: error instanceof Error ? error.message : error,
+    });
     metrics.counter('command.failed', { name: 'snark' });
     try {
-      await interaction.editReply(withCode(ERR.UNKNOWN, "The snark engine is jammed. Ironic."));
-    } catch { /* non-fatal */ }
+      await interaction.editReply(withCode(ERR.UNKNOWN, 'The snark engine is jammed. Ironic.'));
+    } catch {
+      /* non-fatal */
+    }
   }
 }
 
@@ -157,8 +178,8 @@ export async function handleHelpCommand(interaction, _modules) {
         {
           name: 'Core',
           value: [
-            '`/packy <message>` — Talk to me. I\'ll try not to judge you.',
-            '`/mood` — See what state I\'m in. (Hint: grumpy.)',
+            "`/packy <message>` — Talk to me. I'll try not to judge you.",
+            "`/mood` — See what state I'm in. (Hint: grumpy.)",
             '`/snark [category]` — Get a snark line. Optionally from a specific category.',
           ].join('\n'),
           inline: false,
@@ -177,7 +198,7 @@ export async function handleHelpCommand(interaction, _modules) {
             '`/radio play <station>` — Join voice and play a station (e.g. `drp3`, `nova`, `voice`).',
             '`/radio stop` — Stop radio and leave voice.',
             '`/radio stations [category]` — List stations. Categories: DR, Commercial, International.',
-            '`/radio nowplaying` — Show what\'s currently playing.',
+            "`/radio nowplaying` — Show what's currently playing.",
             '`/radio volume <0-100>` — Adjust playback volume.',
           ].join('\n'),
           inline: false,
@@ -212,10 +233,14 @@ export async function handleHelpCommand(interaction, _modules) {
 
     await interaction.editReply({ embeds: [embed] });
   } catch (error) {
-    logger.error('Error handling /help command:', { error: error instanceof Error ? error.message : error });
+    logger.error('Error handling /help command:', {
+      error: error instanceof Error ? error.message : error,
+    });
     metrics.counter('command.failed', { name: 'help' });
     try {
-      await interaction.editReply(withCode(ERR.UNKNOWN, "Help system is broken. How fitting."));
-    } catch { /* non-fatal */ }
+      await interaction.editReply(withCode(ERR.UNKNOWN, 'Help system is broken. How fitting.'));
+    } catch {
+      /* non-fatal */
+    }
   }
 }

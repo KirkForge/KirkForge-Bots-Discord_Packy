@@ -1,3 +1,4 @@
+// @ts-nocheck — TODO: add types
 import { REST, Routes, SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
 import dotenv from 'dotenv';
 
@@ -18,15 +19,10 @@ const commands = [
     .setName('packy')
     .setDescription('Talk to Packy')
     .addStringOption((option) =>
-      option
-        .setName('message')
-        .setDescription('What do you want to ask Packy?')
-        .setRequired(true)
+      option.setName('message').setDescription('What do you want to ask Packy?').setRequired(true),
     ),
 
-  new SlashCommandBuilder()
-    .setName('mood')
-    .setDescription('Show Packy\'s current mood state'),
+  new SlashCommandBuilder().setName('mood').setDescription("Show Packy's current mood state"),
 
   new SlashCommandBuilder()
     .setName('lore')
@@ -35,12 +31,10 @@ const commands = [
       option
         .setName('topic')
         .setDescription('What topic should Packy tell a story about?')
-        .setRequired(true)
+        .setRequired(true),
     ),
 
-  new SlashCommandBuilder()
-    .setName('war')
-    .setDescription('Packy tells a random war story'),
+  new SlashCommandBuilder().setName('war').setDescription('Packy tells a random war story'),
 
   new SlashCommandBuilder()
     .setName('snark')
@@ -51,26 +45,20 @@ const commands = [
         .setDescription('Snark category (default: random mix)')
         .setRequired(false)
         .addChoices(
-          { name: 'Random mix',   value: 'random'      },
-          { name: 'Base',         value: 'base'        },
-          { name: 'Lore',         value: 'lore'        },
-          { name: 'Chromebook',   value: 'chromebook'  },
-          { name: 'Tech humor',   value: 'tech_humor'  },
-          { name: 'Code comments',value: 'code_comments'},
-        )
+          { name: 'Random mix', value: 'random' },
+          { name: 'Base', value: 'base' },
+          { name: 'Lore', value: 'lore' },
+          { name: 'Chromebook', value: 'chromebook' },
+          { name: 'Tech humor', value: 'tech_humor' },
+          { name: 'Code comments', value: 'code_comments' },
+        ),
     ),
 
-  new SlashCommandBuilder()
-    .setName('status')
-    .setDescription('Show Packy system status'),
+  new SlashCommandBuilder().setName('status').setDescription('Show Packy system status'),
 
-  new SlashCommandBuilder()
-    .setName('chaos')
-    .setDescription('Show chaos state for this channel'),
+  new SlashCommandBuilder().setName('chaos').setDescription('Show chaos state for this channel'),
 
-  new SlashCommandBuilder()
-    .setName('help')
-    .setDescription('List all Packy commands'),
+  new SlashCommandBuilder().setName('help').setDescription('List all Packy commands'),
 
   new SlashCommandBuilder()
     .setName('radio')
@@ -83,13 +71,11 @@ const commands = [
           option
             .setName('station')
             .setDescription('Station ID (e.g. drp3, nova, voice, drp8)')
-            .setRequired(true)
-        )
+            .setRequired(true),
+        ),
     )
     .addSubcommand((subcommand) =>
-      subcommand
-        .setName('stop')
-        .setDescription('Stop radio and leave voice channel')
+      subcommand.setName('stop').setDescription('Stop radio and leave voice channel'),
     )
     .addSubcommand((subcommand) =>
       subcommand
@@ -104,13 +90,13 @@ const commands = [
               { name: 'DR (Danish Public)', value: 'DR' },
               { name: 'Commercial', value: 'Commercial' },
               { name: 'International', value: 'International' },
-            )
-        )
+            ),
+        ),
     )
     .addSubcommand((subcommand) =>
       subcommand
         .setName('nowplaying')
-        .setDescription('Show what radio station is currently playing')
+        .setDescription('Show what radio station is currently playing'),
     )
     .addSubcommand((subcommand) =>
       subcommand
@@ -122,8 +108,8 @@ const commands = [
             .setDescription('Volume 0–100')
             .setRequired(true)
             .setMinValue(0)
-            .setMaxValue(100)
-        )
+            .setMaxValue(100),
+        ),
     ),
 
   new SlashCommandBuilder()
@@ -131,40 +117,29 @@ const commands = [
     .setDescription('Admin controls for Packy')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .addSubcommand((subcommand) =>
-      subcommand
-        .setName('mute')
-        .setDescription('Silence Packy in this server')
+      subcommand.setName('mute').setDescription('Silence Packy in this server'),
     )
     .addSubcommand((subcommand) =>
-      subcommand
-        .setName('unmute')
-        .setDescription('Let Packy speak again')
+      subcommand.setName('unmute').setDescription('Let Packy speak again'),
     )
     .addSubcommand((subcommand) =>
-      subcommand
-        .setName('chaos-on')
-        .setDescription('Enable chaos/unprovoked commentary')
+      subcommand.setName('chaos-on').setDescription('Enable chaos/unprovoked commentary'),
     )
     .addSubcommand((subcommand) =>
-      subcommand
-        .setName('chaos-off')
-        .setDescription('Disable chaos/unprovoked commentary')
+      subcommand.setName('chaos-off').setDescription('Disable chaos/unprovoked commentary'),
     )
     .addSubcommand((subcommand) =>
       subcommand
         .setName('allow-channel')
         .setDescription('Allow Packy to speak in a specific channel')
         .addStringOption((option) =>
-          option
-            .setName('channel_id')
-            .setDescription('Channel ID to allow')
-            .setRequired(true)
-        )
+          option.setName('channel_id').setDescription('Channel ID to allow').setRequired(true),
+        ),
     )
     .addSubcommand((subcommand) =>
       subcommand
         .setName('clear-channels')
-        .setDescription('Reset channel restrictions (allow all channels)')
+        .setDescription('Reset channel restrictions (allow all channels)'),
     )
     .addSubcommand((subcommand) =>
       subcommand
@@ -174,8 +149,8 @@ const commands = [
           option
             .setName('city')
             .setDescription('City name (e.g. "New York", "Tokyo", "London")')
-            .setRequired(true)
-        )
+            .setRequired(true),
+        ),
     )
     .addSubcommand((subcommand) =>
       subcommand
@@ -185,8 +160,8 @@ const commands = [
           option
             .setName('name')
             .setDescription('Character name: Vernon, KRONOS, Glitch, Sunjinwo, Packy')
-            .setRequired(true)
-        )
+            .setRequired(true),
+        ),
     )
     .addSubcommand((subcommand) =>
       subcommand
@@ -196,8 +171,8 @@ const commands = [
           option
             .setName('enabled')
             .setDescription('Enable (true) or disable (false) family-friendly mode')
-            .setRequired(true)
-        )
+            .setRequired(true),
+        ),
     )
     .addSubcommand((subcommand) =>
       subcommand
@@ -207,8 +182,8 @@ const commands = [
           option
             .setName('user_id')
             .setDescription('Discord user ID to clear rate limit for')
-            .setRequired(true)
-        )
+            .setRequired(true),
+        ),
     ),
 ].map((command) => command.toJSON());
 

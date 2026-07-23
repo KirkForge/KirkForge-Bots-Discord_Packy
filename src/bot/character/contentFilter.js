@@ -1,3 +1,4 @@
+// @ts-nocheck — TODO: add types
 // Content filter for family-friendly mode
 // Replaces character-specific snark with sanitized alternatives
 
@@ -41,8 +42,22 @@ const FAMILY_SAFE_SUBSTITUTIONS = [
 
 // Words that should be replaced with asterisks in family mode
 const BLOCKED_WORDS = [
-  'fuck', 'shit', 'ass', 'bastard', 'bitch', 'cunt', 'dick', 'cock',
-  'pussy', 'fag', 'slut', 'whore', 'nigger', 'nigga', 'chink', 'kike',
+  'fuck',
+  'shit',
+  'ass',
+  'bastard',
+  'bitch',
+  'cunt',
+  'dick',
+  'cock',
+  'pussy',
+  'fag',
+  'slut',
+  'whore',
+  'nigger',
+  'nigga',
+  'chink',
+  'kike',
 ];
 
 /**

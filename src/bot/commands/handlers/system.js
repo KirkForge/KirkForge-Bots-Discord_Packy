@@ -1,3 +1,4 @@
+// @ts-nocheck — TODO: add types
 import { EmbedBuilder } from 'discord.js';
 import { getCurrentCharacter } from '../../character/randomizer.js';
 import { logger } from '../../logger.js';
@@ -15,8 +16,8 @@ export async function handleStatusCommand(interaction, modules) {
 
     const uptimeSec = Math.floor(process.uptime());
     const hours = Math.floor(uptimeSec / 3600);
-    const mins  = Math.floor((uptimeSec % 3600) / 60);
-    const secs  = uptimeSec % 60;
+    const mins = Math.floor((uptimeSec % 3600) / 60);
+    const secs = uptimeSec % 60;
     const uptimeStr = `${hours}h ${mins}m ${secs}s`;
 
     const guildCount = interaction.client.guilds.cache.size;
@@ -41,12 +42,16 @@ export async function handleStatusCommand(interaction, modules) {
       .setColor(COLORS.STATUS)
       .addFields(
         { name: 'Character', value: charName, inline: true },
-        { name: 'Mode',        value: modeIcon,                        inline: true },
-        { name: 'Adapter',     value: adapterIcon,                     inline: true },
-        { name: 'Uptime',      value: uptimeStr,                       inline: true },
-        { name: 'Guilds',      value: String(guildCount),              inline: true },
-        { name: 'Lorebook',    value: `${loreCount} entries / ${categoryCount} categories`, inline: true },
-        { name: 'Port',        value: COGNITION_PORT, inline: true },
+        { name: 'Mode', value: modeIcon, inline: true },
+        { name: 'Adapter', value: adapterIcon, inline: true },
+        { name: 'Uptime', value: uptimeStr, inline: true },
+        { name: 'Guilds', value: String(guildCount), inline: true },
+        {
+          name: 'Lorebook',
+          value: `${loreCount} entries / ${categoryCount} categories`,
+          inline: true,
+        },
+        { name: 'Port', value: COGNITION_PORT, inline: true },
       )
       .setDescription(charDesc ? `*${charDesc}*` : null)
       .setFooter({ text: `${charName} v2.0.0 — still operational, unfortunately` })
@@ -54,11 +59,15 @@ export async function handleStatusCommand(interaction, modules) {
 
     await interaction.editReply({ embeds: [embed] });
   } catch (error) {
-    logger.error('Error handling /status command:', { error: error instanceof Error ? error.message : error });
+    logger.error('Error handling /status command:', {
+      error: error instanceof Error ? error.message : error,
+    });
     metrics.counter('command.failed', { name: 'status' });
     try {
       await interaction.editReply(withCode(ERR.UNKNOWN, 'Status check failed. Very on-brand.'));
-    } catch { /* non-fatal */ }
+    } catch {
+      /* non-fatal */
+    }
   }
 }
 
@@ -97,27 +106,33 @@ export async function handleChaosCommand(interaction, modules) {
       : '0.00 / 1.0';
 
     const statusStr = chaosEnabled
-      ? (unprovokedEnabled ? '✅ Fully active' : '⚠️ Chaos on, unprovoked off')
+      ? unprovokedEnabled
+        ? '✅ Fully active'
+        : '⚠️ Chaos on, unprovoked off'
       : '❌ Disabled';
 
     const embed = new EmbedBuilder()
       .setTitle('Chaos State')
       .setColor(COLORS.CHAOS)
       .addFields(
-        { name: 'Status',      value: statusStr,   inline: true  },
-        { name: 'Score',       value: scoreStr,    inline: true  },
-        { name: 'Cooldown',    value: cooldownStr, inline: true  },
-        { name: 'Target Lock', value: targetStr,   inline: false },
+        { name: 'Status', value: statusStr, inline: true },
+        { name: 'Score', value: scoreStr, inline: true },
+        { name: 'Cooldown', value: cooldownStr, inline: true },
+        { name: 'Target Lock', value: targetStr, inline: false },
       )
       .setFooter({ text: `Channel: ${interaction.channelId}` })
       .setTimestamp();
 
     await interaction.editReply({ embeds: [embed] });
   } catch (error) {
-    logger.error('Error handling /chaos command:', { error: error instanceof Error ? error.message : error });
+    logger.error('Error handling /chaos command:', {
+      error: error instanceof Error ? error.message : error,
+    });
     metrics.counter('command.failed', { name: 'chaos' });
     try {
       await interaction.editReply(withCode(ERR.CHAOS, 'Chaos state unreadable. Ironic.'));
-    } catch { /* non-fatal */ }
+    } catch {
+      /* non-fatal */
+    }
   }
 }

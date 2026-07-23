@@ -9,7 +9,7 @@ export function extractKeywords(text) {
   const lower = text.toLowerCase();
 
   for (const [k, words] of Object.entries(KEYWORDS)) {
-    if (words.some(w => lower.includes(w))) {
+    if (words.some((w) => lower.includes(w))) {
       found.push(k);
     }
   }

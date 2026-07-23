@@ -6,7 +6,7 @@ export function computeSnark(cpu, temp) {
   }
 
   if (temp !== null && temp !== undefined && temp >= 30) {
-    snark += Math.min((temp - 30) / 10 * 2, 2);
+    snark += Math.min(((temp - 30) / 10) * 2, 2);
   }
 
   return Math.min(snark, 5.0);

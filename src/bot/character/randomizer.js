@@ -1,3 +1,4 @@
+// @ts-nocheck — TODO: add types
 import { VernonState } from './vernon/state.js';
 import { KRONOSState } from './kronos/state.js';
 import { GlitchState } from './glitch/state.js';
@@ -22,7 +23,7 @@ const CHARACTERS = [
     promptBuilder: vernonPrompt,
     snarkBank: vernonSnarkBank,
     lorePath: 'data/lorebook/vernon_lorebook.json',
-    description: '68-year-old domain name hoarder. Patient. Seen every cycle.'
+    description: '68-year-old domain name hoarder. Patient. Seen every cycle.',
   },
   {
     name: 'KRONOS',
@@ -30,7 +31,7 @@ const CHARACTERS = [
     promptBuilder: kronosPrompt,
     snarkBank: kronosSnarkBank,
     lorePath: 'data/lorebook/kronos_lorebook.json',
-    description: '1999 enterprise server. Uptime or death.'
+    description: '1999 enterprise server. Uptime or death.',
   },
   {
     name: 'Glitch',
@@ -38,7 +39,7 @@ const CHARACTERS = [
     promptBuilder: glitchPrompt,
     snarkBank: glitchSnarkBank,
     lorePath: 'data/lorebook/glitch_lorebook.json',
-    description: 'Corrupted AI. Fragments. Incomplete. Still here.'
+    description: 'Corrupted AI. Fragments. Incomplete. Still here.',
   },
   {
     name: 'Sunjinwo',
@@ -46,7 +47,7 @@ const CHARACTERS = [
     promptBuilder: sunjinwoPrompt,
     snarkBank: sunjinwoSnarkBank,
     lorePath: 'data/lorebook/sunjinwo_lorebook.json',
-    description: 'Aura farmer. Monk + internet. Outgrows toxicity.'
+    description: 'Aura farmer. Monk + internet. Outgrows toxicity.',
   },
   {
     name: 'Packy',
@@ -54,8 +55,8 @@ const CHARACTERS = [
     promptBuilder: packyPrompt,
     snarkBank: packySnark,
     lorePath: 'data/lorebook/packy_lorebook_structured.json',
-    description: 'Ed Jr. 2011 Packard Bell. Grumpy veteran.'
-  }
+    description: 'Ed Jr. 2011 Packard Bell. Grumpy veteran.',
+  },
 ];
 
 let currentCharacter = null;
@@ -73,7 +74,7 @@ export function selectRandomCharacter(seed = null) {
 }
 
 export function selectCharacterByName(name) {
-  const found = CHARACTERS.find(c => c.name.toLowerCase() === name.toLowerCase());
+  const found = CHARACTERS.find((c) => c.name.toLowerCase() === name.toLowerCase());
   if (found) {
     currentCharacter = found;
     currentState = new currentCharacter.stateClass();
@@ -115,9 +116,9 @@ export function processResponse(text) {
 }
 
 export function listCharacters() {
-  return CHARACTERS.map(c => ({
+  return CHARACTERS.map((c) => ({
     name: c.name,
-    description: c.description
+    description: c.description,
   }));
 }
 
@@ -133,5 +134,5 @@ export default {
   getSnark,
   getCharacterName,
   processResponse,
-  listCharacters
+  listCharacters,
 };

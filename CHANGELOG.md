@@ -11,6 +11,9 @@
 ### Dependencies
 - **T3**: Added `stripe>=10.0` to pyproject.toml and requirements.txt. Unified Python dependency management: pyproject.toml is now the single source of truth. Removed requirements.txt. Updated CI and Dockerfile.cognition to use `pip install -e ".[dev]"`.
 
+### CI
+- **T4**: Added Python coverage (40% gate), mypy (`--exit-zero` first pass), TypeScript type checking (`tsc --noEmit` with `@ts-nocheck` on existing JS files), and Prettier formatting enforcement to CI. Updated tsconfig.json from `{}` to real config.
+
 ## [2.2.0] — 2026-07-23
 
 ### Architecture

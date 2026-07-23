@@ -1,3 +1,4 @@
+// @ts-nocheck — TODO: add types
 /**
  * SQLite state store for JS-side persistence.
  *
@@ -90,7 +91,10 @@ export function initDb(dbPath) {
   migrateFromJson(db);
 
   const driverName = _isNodeSqlite ? 'node:sqlite' : 'better-sqlite3';
-  logger.info('SQLite state store ready', { driver: driverName, migrated: fs.existsSync(MIGRATION_MARKER) });
+  logger.info('SQLite state store ready', {
+    driver: driverName,
+    migrated: fs.existsSync(MIGRATION_MARKER),
+  });
   return db;
 }
 
@@ -106,7 +110,7 @@ function migrateFromJson(db) {
       const raw = fs.readFileSync(guildFile, 'utf-8');
       const data = JSON.parse(raw);
       const insertGuild = db.prepare(
-        'INSERT OR IGNORE INTO guild_config (guild_id, config_json) VALUES (?, ?)'
+        'INSERT OR IGNORE INTO guild_config (guild_id, config_json) VALUES (?, ?)',
       );
       for (const [guildId, config] of Object.entries(data)) {
         insertGuild.run(guildId, JSON.stringify(config));
@@ -124,7 +128,7 @@ function migrateFromJson(db) {
       const raw = fs.readFileSync(userFile, 'utf-8');
       const data = JSON.parse(raw);
       const insertUser = db.prepare(
-        'INSERT OR IGNORE INTO user_state (user_id, guild_id, state_json) VALUES (?, ?, ?)'
+        'INSERT OR IGNORE INTO user_state (user_id, guild_id, state_json) VALUES (?, ?, ?)',
       );
       for (const [key, state] of Object.entries(data)) {
         const parts = key.split(':');
@@ -148,7 +152,7 @@ function migrateFromJson(db) {
       const data = JSON.parse(raw);
       const channelInjections = data.channelLastInjection || {};
       const insertChaos = db.prepare(
-        'INSERT OR IGNORE INTO chaos_state (guild_id, channel_id, state_json) VALUES (?, ?, ?)'
+        'INSERT OR IGNORE INTO chaos_state (guild_id, channel_id, state_json) VALUES (?, ?, ?)',
       );
       for (const [channelId, ts] of Object.entries(channelInjections)) {
         insertChaos.run('', channelId, JSON.stringify({ lastInjection: ts }));
@@ -160,7 +164,11 @@ function migrateFromJson(db) {
     }
   }
 
-  fs.writeFileSync(MIGRATION_MARKER, migrated ? new Date().toISOString() : 'no-migration-needed', 'utf-8');
+  fs.writeFileSync(
+    MIGRATION_MARKER,
+    migrated ? new Date().toISOString() : 'no-migration-needed',
+    'utf-8',
+  );
 }
 
 export function resetForTesting() {

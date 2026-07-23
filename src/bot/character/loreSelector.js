@@ -1,3 +1,4 @@
+// @ts-nocheck — TODO: add types
 // Selects relevant lore entries to inject into system prompt
 // Implements keyword and mood-based matching for dynamic lore retrieval
 
@@ -75,7 +76,7 @@ function tokenizeMessage(text) {
     text
       .toLowerCase()
       .split(/\s+/)
-      .filter(word => word.length > 2) // Skip very short words
+      .filter((word) => word.length > 2), // Skip very short words
   );
 }
 
@@ -126,7 +127,15 @@ export function expandTokens(tokens, conceptGraph) {
  * @param {Set<string>} emotionBoostedCategories - Categories boosted by emotion detection (optional)
  * @returns {number} Score for this entry (higher = more relevant)
  */
-function scoreLoreEntry(entry, messageTokens, currentMood, expandedTokens = null, categoryConceptsMap = null, category = null, emotionBoostedCategories = null) {
+function scoreLoreEntry(
+  entry,
+  messageTokens,
+  currentMood,
+  expandedTokens = null,
+  categoryConceptsMap = null,
+  category = null,
+  emotionBoostedCategories = null,
+) {
   let score = 0;
 
   // Tokenize entry for keyword matching
@@ -172,7 +181,13 @@ function scoreLoreEntry(entry, messageTokens, currentMood, expandedTokens = null
   }
 
   // Category-level match bonus: +3 if category concepts overlap with expanded query tokens
-  if (category && categoryConceptsMap && categoryConceptsMap[category] && expandedTokens && expandedTokens.size > 0) {
+  if (
+    category &&
+    categoryConceptsMap &&
+    categoryConceptsMap[category] &&
+    expandedTokens &&
+    expandedTokens.size > 0
+  ) {
     const categoryConceptArray = categoryConceptsMap[category];
     for (const concept of categoryConceptArray) {
       if (expandedTokens.has(concept.toLowerCase())) {
@@ -200,7 +215,14 @@ function scoreLoreEntry(entry, messageTokens, currentMood, expandedTokens = null
  * @param {Object} categoryConceptsMap - Category to concepts mapping (optional, default null)
  * @returns {Array<string>} Array of selected lore entries
  */
-export function selectLore(lorebook, userMessage, currentMood, n = 2, conceptGraph = null, categoryConceptsMap = null) {
+export function selectLore(
+  lorebook,
+  userMessage,
+  currentMood,
+  n = 2,
+  conceptGraph = null,
+  categoryConceptsMap = null,
+) {
   // Validate inputs
   if (!lorebook || typeof lorebook !== 'object') {
     return [];
@@ -232,24 +254,32 @@ export function selectLore(lorebook, userMessage, currentMood, n = 2, conceptGra
     for (const [category, entries] of Object.entries(lorebook.categories)) {
       if (Array.isArray(entries)) {
         allEntries.push(
-          ...entries.map(entry => ({
+          ...entries.map((entry) => ({
             text: entry,
             category,
-          }))
+          })),
         );
       }
     }
   }
 
   // Score all entries with concept expansion support and emotion boosting
-  const scored = allEntries.map(entry => ({
+  const scored = allEntries.map((entry) => ({
     ...entry,
-    score: scoreLoreEntry(entry.text, messageTokens, currentMood, expandedTokens, categoryConceptsMap, entry.category, emotionBoostedCategories),
+    score: scoreLoreEntry(
+      entry.text,
+      messageTokens,
+      currentMood,
+      expandedTokens,
+      categoryConceptsMap,
+      entry.category,
+      emotionBoostedCategories,
+    ),
   }));
 
   // Separate entries by score for handling ties
-  const withScore = scored.filter(e => e.score > 0);
-  const noScore = scored.filter(e => e.score === 0);
+  const withScore = scored.filter((e) => e.score > 0);
+  const noScore = scored.filter((e) => e.score === 0);
 
   // If we have entries with non-zero score, use them
   if (withScore.length > 0) {
@@ -280,12 +310,12 @@ export function selectLore(lorebook, userMessage, currentMood, n = 2, conceptGra
     }
 
     // Return top n
-    return result.slice(0, n).map(e => e.text);
+    return result.slice(0, n).map((e) => e.text);
   }
 
   // If nothing scores > 0, return n random entries
   shuffleArray(noScore);
-  return noScore.slice(0, n).map(e => e.text);
+  return noScore.slice(0, n).map((e) => e.text);
 }
 
 /**

@@ -1,3 +1,4 @@
+// @ts-nocheck — TODO: add types
 // radioPlayer.js — Discord voice connection and radio stream manager
 // Handles joining channels, streaming MP3 radio, and graceful teardown
 
@@ -9,10 +10,10 @@ import {
   VoiceConnectionStatus,
   getVoiceConnection,
   NoSubscriberBehavior,
-} from "@discordjs/voice";
+} from '@discordjs/voice';
 
-import { logger } from "../logger.js";
-import { getStation } from "./radioStations.js";
+import { logger } from '../logger.js';
+import { getStation } from './radioStations.js';
 
 // Guild ID → { connection, player, subscription, stationId, startedAt }
 const guildPlayers = new Map();
@@ -26,10 +27,8 @@ function getOrCreatePlayer(guildId) {
     });
 
     if (player.listenerCount('error') === 0) {
-      player.on("error", (error) => {
-        logger.error(
-          `Radio player error in guild ${guildId}: ${error.message}`
-        );
+      player.on('error', (error) => {
+        logger.error(`Radio player error in guild ${guildId}: ${error.message}`);
       });
     }
 
@@ -59,7 +58,10 @@ function getOrCreatePlayer(guildId) {
 export async function playRadio(voiceChannel, stationId) {
   const station = getStation(stationId);
   if (!station) {
-    return { ok: false, message: `Unknown station: **${stationId}**. Use /radio stations to see what's available.` };
+    return {
+      ok: false,
+      message: `Unknown station: **${stationId}**. Use /radio stations to see what's available.`,
+    };
   }
 
   const guildId = voiceChannel.guild.id;
@@ -145,12 +147,15 @@ export async function playRadio(voiceChannel, stationId) {
 export function stopRadio(guildId) {
   const state = guildPlayers.get(guildId);
   if (!state || !state.connection) {
-    return { ok: false, message: "I'm not playing anything right now. Turn your own speakers off." };
+    return {
+      ok: false,
+      message: "I'm not playing anything right now. Turn your own speakers off.",
+    };
   }
 
   try {
     cleanup(guildId);
-    return { ok: true, message: "📻 Radio stopped. Back to silence." };
+    return { ok: true, message: '📻 Radio stopped. Back to silence.' };
   } catch (err) {
     logger.error(`Failed to stop radio in guild ${guildId}: ${err.message}`);
     return { ok: false, message: "Couldn't stop cleanly. Blame the drivers." };

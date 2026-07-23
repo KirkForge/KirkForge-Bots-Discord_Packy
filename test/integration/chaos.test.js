@@ -1,11 +1,4 @@
-#!/usr/bin/env node
-/**
- * Chaos layer integration tests
- * Tests chaosState.js and mood.js — computeChaosScore, shouldFireUnprovoked,
- * createChaosState shape, and cooldown behavior.
- * Does NOT require Discord API.
- */
-
+import { describe, it, expect } from 'vitest';
 import {
   createChaosState,
   computeChaosScore,
@@ -14,108 +7,117 @@ import {
 } from '../../src/bot/character/chaosState.js';
 import { computeSnark, computeMood } from '../../src/bot/character/mood.js';
 
-let passed = 0;
-let failed = 0;
+describe('createChaosState', () => {
+  it('returns an object with chaos_score', () => {
+    const state = createChaosState();
+    expect(state).toBeTypeOf('object');
+    expect(state).toHaveProperty('chaos_score');
+  });
 
-function assert(condition, name) {
-  if (condition) {
-    console.log(`  PASS: ${name}`);
-    passed++;
-  } else {
-    console.log(`  FAIL: ${name}`);
-    failed++;
-  }
-}
+  it('defaults chaos_score to 0', () => {
+    expect(createChaosState().chaos_score).toBe(0);
+  });
 
-function testCreateChaosStateShape() {
-  console.log('\n# createChaosState shape');
+  it('does not have mutation_flag (descoped per ADR-008)', () => {
+    expect(createChaosState()).not.toHaveProperty('mutation_flag');
+  });
 
-  const state = createChaosState();
-  assert(typeof state === 'object', 'createChaosState returns an object');
-  assert('chaos_score' in state, 'createChaosState has chaos_score');
-  assert(state.chaos_score === 0, 'createChaosState chaos_score defaults to 0');
-  assert(!('mutation_flag' in state), 'createChaosState has no mutation_flag (descoped per ADR-008)');
-  assert(!('sabotage_flag' in state), 'createChaosState has no sabotage_flag (descoped per ADR-008)');
-}
+  it('does not have sabotage_flag (descoped per ADR-008)', () => {
+    expect(createChaosState()).not.toHaveProperty('sabotage_flag');
+  });
+});
 
-function testComputeChaosScore() {
-  console.log('\n# computeChaosScore');
+describe('computeChaosScore', () => {
+  it('furious+5 snark is high chaos', () => {
+    expect(computeChaosScore('furious', 5)).toBeGreaterThanOrEqual(0.9);
+  });
 
-  const furiousScore = computeChaosScore('furious', 5);
-  const calmScore = computeChaosScore('calm', 0);
-  assert(furiousScore >= calmScore, `furious(5) >= calm(0): ${furiousScore.toFixed(3)} >= ${calmScore.toFixed(3)}`);
+  it('calm+0 snark is low chaos', () => {
+    expect(computeChaosScore('calm', 0)).toBeLessThanOrEqual(0.15);
+  });
 
-  assert(computeChaosScore('furious', 5) >= 0.9, 'furious+5 snark is high chaos');
-  assert(computeChaosScore('calm', 0) <= 0.15, 'calm+0 snark is low chaos');
-  assert(computeChaosScore('grumpy', 2) > computeChaosScore('calm', 0), 'grumpy > calm baseline');
-}
+  it('grumpy > calm baseline', () => {
+    expect(computeChaosScore('grumpy', 2)).toBeGreaterThan(computeChaosScore('calm', 0));
+  });
+});
 
-function testShouldFireUnprovokedCooldown() {
-  console.log('\n# shouldFireUnprovoked cooldown');
-
-  const state = createChaosState();
-  const channelId = 'test-channel-cooldown-' + Date.now();
-  const highScore = 0.8;
-
-  let fired = false;
-  for (let i = 0; i < 100; i++) {
-    if (shouldFireUnprovoked(state, channelId, highScore)) {
-      fired = true;
+describe('shouldFireUnprovoked', () => {
+  it('high chaos score can fire unprovoked', () => {
+    const state = createChaosState();
+    const channelId = 'vitest-unprovoked-' + Date.now();
+    let fired = false;
+    for (let i = 0; i < 100; i++) {
+      if (shouldFireUnprovoked(state, channelId, 0.8)) fired = true;
     }
-  }
-  assert(fired || highScore >= 0.3, 'high chaos score can fire unprovoked (probability-based)');
+    expect(fired || 0.8 >= 0.3).toBe(true);
+  });
 
-  const lowScore = 0.1;
-  let lowFired = false;
-  for (let i = 0; i < 50; i++) {
-    if (shouldFireUnprovoked(state, 'low-score-channel-' + i, lowScore)) {
-      lowFired = true;
+  it('low chaos score (0.1) never fires unprovoked', () => {
+    const state = createChaosState();
+    let lowFired = false;
+    for (let i = 0; i < 50; i++) {
+      if (shouldFireUnprovoked(state, 'low-score-' + i, 0.1)) lowFired = true;
     }
-  }
-  assert(!lowFired, 'low chaos score (0.1 < 0.3 threshold) never fires unprovoked');
-}
+    expect(lowFired).toBe(false);
+  });
+});
 
-function testApplyMoodOverride() {
-  console.log('\n# applyMoodOverride');
+describe('applyMoodOverride', () => {
+  it('furious caps at 100 chars', () => {
+    expect(applyMoodOverride('furious', 500)).toBe(100);
+  });
 
-  assert(applyMoodOverride('furious', 500) === 100, 'furious caps at 100 chars');
-  assert(applyMoodOverride('hostile', 500) === 150, 'hostile caps at 150 chars');
-  assert(applyMoodOverride('calm', 200) === 300, 'calm expands by 1.5x');
-  assert(applyMoodOverride('grumpy', 500) === 500, 'grumpy uses base length');
-}
+  it('hostile caps at 150 chars', () => {
+    expect(applyMoodOverride('hostile', 500)).toBe(150);
+  });
 
-function testMoodSnarkIntegration() {
-  console.log('\n# mood + snark integration');
+  it('calm expands by 1.5x', () => {
+    expect(applyMoodOverride('calm', 200)).toBe(300);
+  });
 
-  const snarkHigh = computeSnark(95, 40);
-  const snarkLow = computeSnark(null, 20);
-  const moodHigh = computeMood(snarkHigh);
-  const moodLow = computeMood(snarkLow);
+  it('grumpy uses base length', () => {
+    expect(applyMoodOverride('grumpy', 500)).toBe(500);
+  });
+});
 
-  const chaosHigh = computeChaosScore(moodHigh, snarkHigh);
-  const chaosLow = computeChaosScore(moodLow, snarkLow);
-  assert(chaosHigh > chaosLow, `hot CPU+temp produces higher chaos (${chaosHigh.toFixed(3)}) than cool (${chaosLow.toFixed(3)})`);
+describe('mood + snark integration', () => {
+  it('hot CPU+temp produces higher chaos than cool', () => {
+    const snarkHigh = computeSnark(95, 40);
+    const snarkLow = computeSnark(null, 20);
+    const moodHigh = computeMood(snarkHigh);
+    const moodLow = computeMood(snarkLow);
+    const chaosHigh = computeChaosScore(moodHigh, snarkHigh);
+    const chaosLow = computeChaosScore(moodLow, snarkLow);
+    expect(chaosHigh).toBeGreaterThan(chaosLow);
+  });
 
-  assert(typeof computeSnark(50, 25) === 'number', 'computeSnark returns number');
-  assert(['furious', 'hostile', 'snarky', 'irritated', 'grumpy', 'calm'].includes(computeMood(3)), 'computeMood returns valid mood string');
-}
+  it('computeSnark returns a number', () => {
+    expect(typeof computeSnark(50, 25)).toBe('number');
+  });
 
-async function main() {
-  console.log('='.repeat(60));
-  console.log('Chaos Layer Integration Tests');
-  console.log('='.repeat(60));
+  it('computeMood returns valid mood string', () => {
+    const validMoods = ['furious', 'hostile', 'snarky', 'irritated', 'grumpy', 'calm'];
+    expect(validMoods).toContain(computeMood(3));
+  });
 
-  testCreateChaosStateShape();
-  testComputeChaosScore();
-  testShouldFireUnprovokedCooldown();
-  testApplyMoodOverride();
-  testMoodSnarkIntegration();
+  it('computeChaosScore returns values between 0 and 1', () => {
+    for (const mood of ['furious', 'hostile', 'snarky', 'irritated', 'grumpy', 'calm']) {
+      const score = computeChaosScore(mood, 2);
+      expect(score).toBeGreaterThanOrEqual(0);
+      expect(score).toBeLessThanOrEqual(1);
+    }
+  });
 
-  console.log('\n' + '='.repeat(60));
-  console.log(`Results: ${passed}/${passed + failed} tests passed`);
-  console.log('='.repeat(60));
+  it('chaos score increases with snark level for same mood', () => {
+    const calmLow = computeChaosScore('calm', 0);
+    const calmHigh = computeChaosScore('calm', 5);
+    expect(calmHigh).toBeGreaterThan(calmLow);
+  });
 
-  process.exit(failed > 0 ? 1 : 0);
-}
-
-main();
+  it('shouldFireUnprovoked never fires with zero score', () => {
+    const state = createChaosState();
+    for (let i = 0; i < 50; i++) {
+      expect(shouldFireUnprovoked(state, 'zero-score-ch-' + i, 0)).toBe(false);
+    }
+  });
+});

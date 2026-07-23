@@ -1,5 +1,13 @@
 # Changelog — Gargoyle Packy
 
+## [2.3.0] — 2026-07-23
+
+### Security
+- **T1**: Removed committed `.env` from git (already gitignored). Auth now required at startup: `PACKY_API_SECRET` must be set, or `PACKY_DEV_LICENSE=1` for local dev. Updated `.env.example` with missing vars and descriptive placeholder.
+
+### Testing
+- **T2**: Migrated Node tests from custom `console.log` runner to Vitest. 77 assertions across 6 test files with `describe/it/expect`. Added new assertions for rate limiter status tracking, chaos score bounds, concurrent DB writes, and metric aggregation.
+
 ## [2.2.0] — 2026-07-23
 
 ### Architecture

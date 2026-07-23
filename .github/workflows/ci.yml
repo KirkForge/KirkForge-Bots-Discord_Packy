@@ -21,8 +21,8 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Run all tests (smoke + integration)
-        run: npm run test:all
+      - name: Run all tests (Vitest)
+        run: npm run test:ci
 
   lint:
     name: Lint

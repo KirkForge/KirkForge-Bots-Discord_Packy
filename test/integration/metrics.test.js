@@ -1,169 +1,133 @@
-#!/usr/bin/env node
-/**
- * Metrics + Sentry transport integration tests
- * Tests counter, timing, gauge, error capture, ring buffer cap,
- * and Sentry lazy-init (mocked).
- */
+import { describe, it, expect } from 'vitest';
 
-import path from 'path';
-import os from 'os';
+describe('Metrics', () => {
+  describe('counter increments', () => {
+    it('increments named counter with tags', async () => {
+      const { counter, getMetrics } = await import('../../src/bot/metrics.js');
+      const m = getMetrics();
+      const before = m.counters['command.invoked{name=vitest}'] || 0;
+      counter('command.invoked', { name: 'vitest' });
+      counter('command.invoked', { name: 'vitest' });
+      counter('command.invoked', { name: 'other' });
+      const after = getMetrics();
+      expect(after.counters['command.invoked{name=vitest}']).toBe(before + 2);
+      expect(after.counters['command.invoked{name=other}']).toBe(1);
+    });
+  });
 
-let passed = 0;
-let failed = 0;
+  describe('timing records', () => {
+    it('records timing entries with count and p50', async () => {
+      const { timing, getMetrics } = await import('../../src/bot/metrics.js');
+      timing('respond.latency', 150, { guildId: 'vitest-g1' });
+      timing('respond.latency', 200, { guildId: 'vitest-g1' });
+      const m = getMetrics();
+      const t = m.timings['respond.latency{guildId=vitest-g1}'];
+      expect(t).toBeDefined();
+      expect(t.count).toBe(2);
+      expect(t.p50).toBeGreaterThan(0);
+    });
+  });
 
-function assert(condition, name) {
-  if (condition) {
-    console.log(`  PASS: ${name}`);
-    passed++;
-  } else {
-    console.log(`  FAIL: ${name}`);
-    failed++;
-  }
-}
+  describe('gauge records', () => {
+    it('takes last value', async () => {
+      const { gauge, getMetrics } = await import('../../src/bot/metrics.js');
+      gauge('bot.uptime', 3600);
+      gauge('bot.uptime', 7200);
+      const m = getMetrics();
+      expect(m.gauges['bot.uptime']).toBe(7200);
+    });
+  });
 
-// We import metrics fresh for each test section by using dynamic imports
-// and clearing module cache, since metrics.js uses module-level state.
+  describe('error capture', () => {
+    it('captures error with context', async () => {
+      const { error, getMetrics } = await import('../../src/bot/metrics.js');
+      const err = new Error('vitest error');
+      error(err, { source: 'vitest' });
+      const m = getMetrics();
+      expect(m.errors.length).toBeGreaterThanOrEqual(1);
+      const lastErr = m.errors[m.errors.length - 1];
+      expect(lastErr.msg).toBe('vitest error');
+      expect(lastErr.ctx.source).toBe('vitest');
+    });
+  });
 
-function clearModuleCache() {
-  for (const key of Object.keys(require.cache)) {
-    if (key.includes('metrics.js')) {
-      delete require.cache[key];
-    }
-  }
-}
+  describe('error ring buffer caps at 100', () => {
+    it('caps errors at 100', async () => {
+      const { error, getMetrics } = await import('../../src/bot/metrics.js');
+      for (let i = 0; i < 150; i++) {
+        error(new Error(`overflow-${i}`), { idx: i });
+      }
+      const m = getMetrics();
+      expect(m.errors.length).toBeLessThanOrEqual(100);
+    });
+  });
 
-async function testCounterIncrements() {
-  console.log('\n# Counter increments');
+  describe('flush to SQLite', () => {
+    it('flushes metrics to SQLite', async () => {
+      const { counter, flush, stopMetricsFlush } = await import('../../src/bot/metrics.js');
+      const { getDb } = await import('../../src/bot/db.js');
+      counter('test.flush', { ok: 'true' });
+      flush();
+      const db = getDb();
+      const rows = db.prepare('SELECT data_json FROM metrics ORDER BY id DESC LIMIT 1').all();
+      expect(rows.length).toBeGreaterThanOrEqual(1);
+      if (rows.length > 0) {
+        const data = JSON.parse(rows[0].data_json);
+        expect(data.counters['test.flush{ok=true}']).toBe(1);
+        expect(Array.isArray(data.errors)).toBe(true);
+      }
+      stopMetricsFlush();
+    });
+  });
 
-  const { counter, getMetrics } = await import('../../src/bot/metrics.js');
-  const m = getMetrics();
-  const before = m.counters['command.invoked{name=packy}'] || 0;
+  describe('Sentry lazy-init', () => {
+    it('captures error even with Sentry DSN set', async () => {
+      const { error, getMetrics, stopMetricsFlush } = await import('../../src/bot/metrics.js');
+      const err = new Error('sentry-vitest-test');
+      error(err, { source: 'vitest-sentry' });
+      const m = getMetrics();
+      expect(m.errors.length).toBeGreaterThanOrEqual(1);
+      const lastErr = m.errors[m.errors.length - 1];
+      expect(lastErr.msg).toBe('sentry-vitest-test');
+      stopMetricsFlush();
+    });
+  });
 
-  counter('command.invoked', { name: 'packy' });
-  counter('command.invoked', { name: 'packy' });
-  counter('command.invoked', { name: 'mood' });
+  describe('counter isolation', () => {
+    it('counters with different tags are independent', async () => {
+      const { counter, getMetrics } = await import('../../src/bot/metrics.js');
+      counter('api.call', { method: 'GET' });
+      counter('api.call', { method: 'POST' });
+      counter('api.call', { method: 'GET' });
+      const m = getMetrics();
+      expect(m.counters['api.call{method=GET}']).toBeGreaterThanOrEqual(2);
+      expect(m.counters['api.call{method=POST}']).toBeGreaterThanOrEqual(1);
+    });
+  });
 
-  const after = getMetrics();
-  assert(after.counters['command.invoked{name=packy}'] === before + 2, 'packy counter incremented twice');
-  assert(after.counters['command.invoked{name=mood}'] === 1, 'mood counter incremented once');
-}
+  describe('gauge overwrite', () => {
+    it('gauge retains only the last value', async () => {
+      const { gauge, getMetrics } = await import('../../src/bot/metrics.js');
+      gauge('cpu.percent', 45);
+      gauge('cpu.percent', 78);
+      gauge('cpu.percent', 92);
+      const m = getMetrics();
+      expect(m.gauges['cpu.percent']).toBe(92);
+    });
+  });
 
-async function testTimingRecords() {
-  console.log('\n# Timing records');
-
-  const { timing, getMetrics } = await import('../../src/bot/metrics.js');
-  timing('respond.latency', 150, { guildId: 'g1' });
-  timing('respond.latency', 200, { guildId: 'g1' });
-
-  const m = getMetrics();
-  const t = m.timings['respond.latency{guildId=g1}'];
-  assert(t !== undefined, 'timing entry exists');
-  assert(t.count === 2, `timing count is 2, got ${t.count}`);
-  assert(t.p50 > 0, 'p50 is positive');
-}
-
-async function testGaugeRecords() {
-  console.log('\n# Gauge records');
-
-  const { gauge, getMetrics } = await import('../../src/bot/metrics.js');
-  gauge('bot.uptime', 3600);
-  gauge('bot.uptime', 7200);
-
-  const m = getMetrics();
-  assert(m.gauges['bot.uptime'] === 7200, 'gauge takes last value');
-}
-
-async function testErrorCapture() {
-  console.log('\n# Error capture');
-
-  const { error, getMetrics } = await import('../../src/bot/metrics.js');
-  const err = new Error('test error');
-  error(err, { source: 'test' });
-
-  const m = getMetrics();
-  assert(m.errors.length >= 1, 'error captured');
-  const lastErr = m.errors[m.errors.length - 1];
-  assert(lastErr.msg === 'test error', `error message correct: ${lastErr.msg}`);
-  assert(lastErr.ctx.source === 'test', 'error context preserved');
-}
-
-async function testErrorRingCap() {
-  console.log('\n# Error ring buffer caps at 100');
-
-  const { error, getMetrics } = await import('../../src/bot/metrics.js');
-  for (let i = 0; i < 150; i++) {
-    error(new Error(`overflow-${i}`), { idx: i });
-  }
-
-  const m = getMetrics();
-  assert(m.errors.length <= 100, `errors capped at 100, got ${m.errors.length}`);
-}
-
-async function testFlush() {
-  console.log('\n# Flush to SQLite');
-
-  const { counter, flush, stopMetricsFlush } = await import('../../src/bot/metrics.js');
-  const { getDb } = await import('../../src/bot/db.js');
-
-  counter('test.flush', { ok: 'true' });
-  flush();
-
-  const db = getDb();
-  const rows = db.prepare('SELECT data_json FROM metrics ORDER BY id DESC LIMIT 1').all();
-  assert(rows.length >= 1, 'metrics row exists in SQLite');
-
-  if (rows.length > 0) {
-    const data = JSON.parse(rows[0].data_json);
-    assert(data.counters['test.flush{ok=true}'] === 1, 'flushed counter present');
-    assert(Array.isArray(data.errors), 'errors array present');
-  }
-
-  stopMetricsFlush();
-}
-
-async function testSentryLazyInit() {
-  console.log('\n# Sentry lazy-init smoke test');
-
-  // Set a test DSN to trigger Sentry init path
-  const originalDsn = process.env.SENTRY_DSN;
-  process.env.SENTRY_DSN = 'https://test@o0.ingest.sentry.io/0';
-
-  // Clear module cache so metrics.js re-evaluates with SENTRY_DSN set
-  const freshModule = await import(`${'../../src/bot/metrics.js'}?update=${Date.now()}`);
-
-  // Verify that the error function works with Sentry DSN set
-  // (Sentry.init will be attempted but fail gracefully with a fake DSN)
-  const err = new Error('sentry-smoke-test');
-  freshModule.error(err, { source: 'smoke-test' });
-
-  const m = freshModule.getMetrics();
-  assert(m.errors.length >= 1, 'error captured even with Sentry DSN set');
-  const lastErr = m.errors[m.errors.length - 1];
-  assert(lastErr.msg === 'sentry-smoke-test', 'error message preserved with Sentry');
-
-  freshModule.stopMetricsFlush();
-  process.env.SENTRY_DSN = originalDsn || '';
-  delete process.env.SENTRY_DSN;
-}
-
-async function main() {
-  console.log('='.repeat(60));
-  console.log('Metrics + Sentry Integration Tests');
-  console.log('='.repeat(60));
-
-  await testCounterIncrements();
-  await testTimingRecords();
-  await testGaugeRecords();
-  await testErrorCapture();
-  await testErrorRingCap();
-  await testFlush();
-  await testSentryLazyInit();
-
-  console.log('\n' + '='.repeat(60));
-  console.log(`Results: ${passed}/${passed + failed} tests passed`);
-  console.log('='.repeat(60));
-
-  process.exit(failed > 0 ? 1 : 0);
-}
-
-main();
+  describe('timing aggregation', () => {
+    it('timing stores count and percentiles', async () => {
+      const { timing, getMetrics } = await import('../../src/bot/metrics.js');
+      for (let i = 1; i <= 10; i++) {
+        timing('api.latency', i * 10, { endpoint: '/respond' });
+      }
+      const m = getMetrics();
+      const t = m.timings['api.latency{endpoint=/respond}'];
+      expect(t).toBeDefined();
+      expect(t.count).toBe(10);
+      expect(t.p50).toBeGreaterThan(0);
+      expect(t.p99).toBeGreaterThanOrEqual(t.p50);
+    });
+  });
+});

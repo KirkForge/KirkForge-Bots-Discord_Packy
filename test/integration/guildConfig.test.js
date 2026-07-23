@@ -1,10 +1,4 @@
-#!/usr/bin/env node
-/**
- * Guild config round-trip integration tests
- * Tests save/load/get/set lifecycle using SQLite backend.
- * Does NOT require Discord API.
- */
-
+import { describe, it, expect, beforeEach } from 'vitest';
 import {
   getGuildConfig,
   setGuildConfig,
@@ -13,104 +7,84 @@ import {
   isGuildMuted,
 } from '../../src/bot/guildConfig.js';
 
-let passed = 0;
-let failed = 0;
+describe('Guild config', () => {
+  describe('default config', () => {
+    it('returns default prefix', () => {
+      const cfg = getGuildConfig('vitest-default-guild');
+      expect(cfg.prefix).toBe('!packy');
+    });
 
-function assert(condition, name) {
-  if (condition) {
-    console.log(`  PASS: ${name}`);
-    passed++;
-  } else {
-    console.log(`  FAIL: ${name}`);
-    failed++;
-  }
-}
+    it('botMuted defaults to false', () => {
+      expect(getGuildConfig('vitest-default-guild').botMuted).toBe(false);
+    });
 
-async function testDefaultConfig() {
-  console.log('\n# Default config');
+    it('chaosEnabled defaults to true', () => {
+      expect(getGuildConfig('vitest-default-guild').chaosEnabled).toBe(true);
+    });
 
-  const cfg = getGuildConfig('test-guild-default');
-  assert(cfg.prefix === '!packy', `prefix defaults to !packy, got ${cfg.prefix}`);
-  assert(cfg.botMuted === false, 'botMuted defaults to false');
-  assert(cfg.chaosEnabled === true, 'chaosEnabled defaults to true');
-  assert(typeof cfg.allowedChannels !== 'undefined', 'allowedChannels exists');
-}
+    it('allowedChannels exists', () => {
+      const cfg = getGuildConfig('vitest-default-guild');
+      expect(typeof cfg.allowedChannels).not.toBe('undefined');
+    });
+  });
 
-async function testSetAndGet() {
-  console.log('\n# Set and get');
+  describe('set and get', () => {
+    it('persists config with custom fields', () => {
+      setGuildConfig('vitest-set-guild', { botMuted: true, location: 'Copenhagen' });
+      const cfg = getGuildConfig('vitest-set-guild');
+      expect(cfg.botMuted).toBe(true);
+      expect(cfg.location).toBe('Copenhagen');
+      expect(cfg.prefix).toBe('!packy');
+    });
+  });
 
-  setGuildConfig('test-guild-set', { botMuted: true, location: 'Copenhagen' });
-  const cfg = getGuildConfig('test-guild-set');
+  describe('partial update (merge)', () => {
+    it('preserves first value and merges second', () => {
+      setGuildConfig('vitest-merge-guild', { chaosEnabled: false });
+      setGuildConfig('vitest-merge-guild', { familyFriendly: true });
+      const cfg = getGuildConfig('vitest-merge-guild');
+      expect(cfg.chaosEnabled).toBe(false);
+      expect(cfg.familyFriendly).toBe(true);
+    });
+  });
 
-  assert(cfg.botMuted === true, 'botMuted persisted');
-  assert(cfg.location === 'Copenhagen', 'custom field preserved');
-  assert(cfg.prefix === '!packy', 'unset fields keep defaults');
-}
+  describe('channel allow-list', () => {
+    it('empty list denies all channels', () => {
+      setGuildConfig('vitest-deny-guild', { allowedChannels: [] });
+      expect(isChannelAllowed('vitest-deny-guild', 'channel-1')).toBe(false);
+      expect(isChannelAllowed('vitest-deny-guild', 'channel-2')).toBe(false);
+    });
 
-async function testPartialUpdate() {
-  console.log('\n# Partial update (merge)');
+    it('explicit channel allowed, others denied', () => {
+      setGuildConfig('vitest-allow-guild', { allowedChannels: ['channel-1'] });
+      expect(isChannelAllowed('vitest-allow-guild', 'channel-1')).toBe(true);
+      expect(isChannelAllowed('vitest-allow-guild', 'channel-42')).toBe(false);
+    });
+  });
 
-  setGuildConfig('test-guild-merge', { chaosEnabled: false });
-  setGuildConfig('test-guild-merge', { familyFriendly: true });
+  describe('save/load round-trip', () => {
+    it('persists config after save', async () => {
+      setGuildConfig('vitest-rt-guild', { botMuted: true, chaosEnabled: false });
+      await saveGuildConfigs();
+      const cfg = getGuildConfig('vitest-rt-guild');
+      expect(cfg.botMuted).toBe(true);
+      expect(cfg.chaosEnabled).toBe(false);
+    });
+  });
 
-  const cfg = getGuildConfig('test-guild-merge');
-  assert(cfg.chaosEnabled === false, 'first value preserved');
-  assert(cfg.familyFriendly === true, 'second value merged');
-}
+  describe('guild mute detection', () => {
+    it('detects muted guild', () => {
+      setGuildConfig('vitest-muted', { botMuted: true });
+      expect(isGuildMuted('vitest-muted')).toBe(true);
+    });
 
-async function testChannelAllowListEmptyDeny() {
-  console.log('\n# Channel allow-list (empty = deny)');
+    it('detects unmuted guild', () => {
+      setGuildConfig('vitest-unmuted', { botMuted: false });
+      expect(isGuildMuted('vitest-unmuted')).toBe(false);
+    });
 
-  setGuildConfig('test-guild-deny', { allowedChannels: [] });
-  assert(!isChannelAllowed('test-guild-deny', 'channel-1'), 'empty list denies channel-1');
-  assert(!isChannelAllowed('test-guild-deny', 'channel-2'), 'empty list denies channel-2');
-
-  const cfg = getGuildConfig('test-guild-deny');
-  setGuildConfig('test-guild-deny', { allowedChannels: ['channel-1'] });
-  assert(isChannelAllowed('test-guild-deny', 'channel-1'), 'explicit channel allowed');
-  assert(!isChannelAllowed('test-guild-deny', 'channel-42'), 'non-listed channel still denied');
-}
-
-async function testSaveLoadRoundTrip() {
-  console.log('\n# Save/load round-trip');
-
-  setGuildConfig('test-guild-roundtrip', { botMuted: true, chaosEnabled: false });
-  await saveGuildConfigs();
-
-  const cfg = getGuildConfig('test-guild-roundtrip');
-  assert(cfg.botMuted === true, 'botMuted true after save');
-  assert(cfg.chaosEnabled === false, 'chaosEnabled false after save');
-}
-
-async function testIsGuildMuted() {
-  console.log('\n# Guild mute detection');
-
-  setGuildConfig('test-guild-muted', { botMuted: true });
-  assert(isGuildMuted('test-guild-muted') === true, 'muted guild detected');
-
-  setGuildConfig('test-guild-unmuted', { botMuted: false });
-  assert(isGuildMuted('test-guild-unmuted') === false, 'unmuted guild detected');
-
-  assert(isGuildMuted('test-guild-nonexistent') === false, 'nonexistent guild not muted');
-}
-
-async function main() {
-  console.log('='.repeat(60));
-  console.log('Guild Config Integration Tests');
-  console.log('='.repeat(60));
-
-  await testDefaultConfig();
-  await testSetAndGet();
-  await testPartialUpdate();
-  await testChannelAllowListEmptyDeny();
-  await testSaveLoadRoundTrip();
-  await testIsGuildMuted();
-
-  console.log('\n' + '='.repeat(60));
-  console.log(`Results: ${passed}/${passed + failed} tests passed`);
-  console.log('='.repeat(60));
-
-  process.exit(failed > 0 ? 1 : 0);
-}
-
-main();
+    it('nonexistent guild is not muted', () => {
+      expect(isGuildMuted('vitest-nonexistent')).toBe(false);
+    });
+  });
+});

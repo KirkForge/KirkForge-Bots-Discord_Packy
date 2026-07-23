@@ -1,7 +1,7 @@
 // Selects relevant lore entries to inject into system prompt
 // Implements keyword and mood-based matching for dynamic lore retrieval
 
-import fs from 'fs/promises';
+import { readJsonFileAsync } from '../db.js';
 import { logger } from '../logger.js';
 import { classifyMessage } from './emotionClassifier.js';
 
@@ -12,8 +12,7 @@ import { classifyMessage } from './emotionClassifier.js';
  */
 export async function loadLorebook(lorePath) {
   try {
-    const data = await fs.readFile(lorePath, 'utf-8');
-    return JSON.parse(data);
+    return await readJsonFileAsync(lorePath);
   } catch (error) {
     logger.error('Failed to load lorebook', { path: lorePath, error: error.message });
     return { categories: {} };
@@ -28,14 +27,11 @@ export async function loadLorebook(lorePath) {
  */
 export async function loadConceptGraph(conceptGraphPath, categoryConceptsPath) {
   try {
-    const [graphData, categoryData] = await Promise.all([
-      fs.readFile(conceptGraphPath, 'utf-8'),
-      fs.readFile(categoryConceptsPath, 'utf-8'),
+    const [conceptGraph, categoryConceptsMap] = await Promise.all([
+      readJsonFileAsync(conceptGraphPath),
+      readJsonFileAsync(categoryConceptsPath),
     ]);
-    return {
-      conceptGraph: JSON.parse(graphData),
-      categoryConceptsMap: JSON.parse(categoryData),
-    };
+    return { conceptGraph, categoryConceptsMap };
   } catch (error) {
     logger.error('Failed to load concept graphs', { error: error.message });
     return { conceptGraph: {}, categoryConceptsMap: {} };

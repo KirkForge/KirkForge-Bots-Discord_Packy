@@ -8,7 +8,7 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { initDb, getDb, closeDb, resetForTesting } from '../../src/bot/db.js';
+import { initDb, getDb, closeDb, resetForTesting, readJsonFile, readJsonFileAsync, flushMetricsToDb } from '../../src/bot/db.js';
 import {
   getGuildConfig,
   setGuildConfig,
@@ -238,6 +238,56 @@ async function testMigrationIdempotent() {
   delete process.env.PACKY_DB_PATH;
 }
 
+async function testReadJsonFile() {
+  console.log('\n# readJsonFile reads and parses JSON');
+
+  const tmpFile = path.join(TMPDIR, 'test-read.json');
+  const data = { foo: 'bar', num: 42 };
+  fs.writeFileSync(tmpFile, JSON.stringify(data));
+
+  const result = readJsonFile(tmpFile);
+  assert(result.foo === 'bar', 'readJsonFile parses JSON correctly');
+  assert(result.num === 42, 'readJsonFile preserves numbers');
+
+  fs.unlinkSync(tmpFile);
+}
+
+async function testReadJsonFileAsync() {
+  console.log('\n# readJsonFileAsync reads and parses JSON');
+
+  const tmpFile = path.join(TMPDIR, 'test-read-async.json');
+  const data = { async: true, list: [1, 2, 3] };
+  fs.writeFileSync(tmpFile, JSON.stringify(data));
+
+  const result = await readJsonFileAsync(tmpFile);
+  assert(result.async === true, 'readJsonFileAsync parses JSON correctly');
+  assert(result.list.length === 3, 'readJsonFileAsync preserves arrays');
+
+  fs.unlinkSync(tmpFile);
+}
+
+async function testFlushMetricsToDb() {
+  console.log('\n# flushMetricsToDb writes metrics to SQLite');
+
+  cleanup();
+  const dbPath = path.join(TMPDIR, 'test-metrics.db');
+  process.env.PACKY_DB_PATH = dbPath;
+  initDb();
+  resetForTesting();
+
+  const metricsData = { counters: { 'test.metric': 5 }, gauges: {}, timings: {}, errors: [] };
+  flushMetricsToDb(metricsData);
+
+  const db = getDb();
+  const rows = db.prepare('SELECT data_json FROM metrics ORDER BY id DESC LIMIT 1').all();
+  assert(rows.length === 1, 'metrics row inserted');
+  const parsed = JSON.parse(rows[0].data_json);
+  assert(parsed.counters['test.metric'] === 5, 'metrics data round-trips');
+
+  closeDb();
+  delete process.env.PACKY_DB_PATH;
+}
+
 async function main() {
   console.log('='.repeat(60));
   console.log('SQLite State Store Integration Tests');
@@ -249,6 +299,9 @@ async function main() {
   await testChaosRoundTrip();
   await testMigrationFromJson();
   await testMigrationIdempotent();
+  await testReadJsonFile();
+  await testReadJsonFileAsync();
+  await testFlushMetricsToDb();
 
   console.log('\n' + '='.repeat(60));
   console.log(`Results: ${passed}/${passed + failed} tests passed`);

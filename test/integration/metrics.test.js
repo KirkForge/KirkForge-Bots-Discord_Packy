@@ -5,7 +5,6 @@
  * and Sentry lazy-init (mocked).
  */
 
-import fs from 'fs';
 import path from 'path';
 import os from 'os';
 
@@ -101,24 +100,23 @@ async function testErrorRingCap() {
 }
 
 async function testFlush() {
-  console.log('\n# Flush to metrics.json');
+  console.log('\n# Flush to SQLite');
 
   const { counter, flush, stopMetricsFlush } = await import('../../src/bot/metrics.js');
+  const { getDb } = await import('../../src/bot/db.js');
+
   counter('test.flush', { ok: 'true' });
   flush();
 
-  const metricsPath = path.join(process.cwd(), 'data', 'metrics.json');
-  let content;
-  try {
-    content = await fs.promises.readFile(metricsPath, 'utf-8');
-  } catch (e) {
-    assert(false, `metrics.json readable: ${e.message}`);
-    return;
-  }
+  const db = getDb();
+  const rows = db.prepare('SELECT data_json FROM metrics ORDER BY id DESC LIMIT 1').all();
+  assert(rows.length >= 1, 'metrics row exists in SQLite');
 
-  const data = JSON.parse(content);
-  assert(data.counters['test.flush{ok=true}'] === 1, 'flushed counter present');
-  assert(Array.isArray(data.errors), 'errors array present');
+  if (rows.length > 0) {
+    const data = JSON.parse(rows[0].data_json);
+    assert(data.counters['test.flush{ok=true}'] === 1, 'flushed counter present');
+    assert(Array.isArray(data.errors), 'errors array present');
+  }
 
   stopMetricsFlush();
 }

@@ -14,6 +14,9 @@
 ### CI
 - **T4**: Added Python coverage (40% gate), mypy (`--exit-zero` first pass), TypeScript type checking (`tsc --noEmit` with `@ts-nocheck` on existing JS files), and Prettier formatting enforcement to CI. Updated tsconfig.json from `{}` to real config.
 
+### Cleanup
+- **T5**: Removed unused `@anthropic-ai/sdk` dependency. Added Prettier with `.prettierrc` config and format scripts. Fixed CI to cover `dev` branch PRs.
+
 ## [2.2.0] — 2026-07-23
 
 ### Architecture

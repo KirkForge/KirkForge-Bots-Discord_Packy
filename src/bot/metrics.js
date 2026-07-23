@@ -7,8 +7,11 @@
  * Clean-clone safe: no SENTRY_DSN = ring buffer only (zero deps beyond db.js).
  */
 
+import { createRequire } from 'module';
 import { flushMetricsToDb } from './db.js';
 import { logger } from './logger.js';
+
+const require = createRequire(import.meta.url);
 
 const MAX_ERRORS = 100;
 

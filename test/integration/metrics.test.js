@@ -121,6 +121,31 @@ async function testFlush() {
   stopMetricsFlush();
 }
 
+async function testSentryLazyInit() {
+  console.log('\n# Sentry lazy-init smoke test');
+
+  // Set a test DSN to trigger Sentry init path
+  const originalDsn = process.env.SENTRY_DSN;
+  process.env.SENTRY_DSN = 'https://test@o0.ingest.sentry.io/0';
+
+  // Clear module cache so metrics.js re-evaluates with SENTRY_DSN set
+  const freshModule = await import(`${'../../src/bot/metrics.js'}?update=${Date.now()}`);
+
+  // Verify that the error function works with Sentry DSN set
+  // (Sentry.init will be attempted but fail gracefully with a fake DSN)
+  const err = new Error('sentry-smoke-test');
+  freshModule.error(err, { source: 'smoke-test' });
+
+  const m = freshModule.getMetrics();
+  assert(m.errors.length >= 1, 'error captured even with Sentry DSN set');
+  const lastErr = m.errors[m.errors.length - 1];
+  assert(lastErr.msg === 'sentry-smoke-test', 'error message preserved with Sentry');
+
+  freshModule.stopMetricsFlush();
+  process.env.SENTRY_DSN = originalDsn || '';
+  delete process.env.SENTRY_DSN;
+}
+
 async function main() {
   console.log('='.repeat(60));
   console.log('Metrics + Sentry Integration Tests');
@@ -132,6 +157,7 @@ async function main() {
   await testErrorCapture();
   await testErrorRingCap();
   await testFlush();
+  await testSentryLazyInit();
 
   console.log('\n' + '='.repeat(60));
   console.log(`Results: ${passed}/${passed + failed} tests passed`);

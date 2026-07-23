@@ -1,5 +1,15 @@
 # Changelog — Gargoyle Packy
 
+## [2.1.0] — 2026-07-22
+
+### Architecture
+- **T1**: JS-side persistence migrated from JSON files to SQLite (node:sqlite / better-sqlite3). One-shot migration with `.migrated_sqlite` marker. Original JSON files preserved.
+- **T2**: Added metrics interface (`src/bot/metrics.js`) with ring buffer + Sentry lazy-init. Per-command counters and `/respond` latency timing.
+- **T3**: Removed stochastic composer from LLM prompt path (ADR-018). Composer is now emergency fallback only.
+- **T4**: Removed descoped `mutation_flag`/`sabotage_flag` from `createChaosState()`. Removed `shouldSabotage()`. Added chaos integration tests.
+- **T5**: Backfilled ADR-016 (SQLite), ADR-017 (Metrics/Sentry), ADR-018 (Composer emergency fallback). Fixed AGENTS.md stale references.
+- **T6**: CI smoke job now runs `npm run test:all` (smoke + integration). Integration test script uses glob pattern.
+
 ## [2.0.0] — 2026-04-07
 
 ### Architecture

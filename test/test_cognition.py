@@ -52,9 +52,11 @@ def test_import_packy_cog_engine():
 
 def test_cog_think_returns_string():
     """Test 6: cog.think("write a bash script") returns a non-empty string"""
+    import asyncio
+
     from src.cognition.packy_cog_engine import PackyCogEngine
 
     cog = PackyCogEngine(brain=None)
-    result = cog.think("write a bash script")
+    result = asyncio.run(cog.think("write a bash script"))
     assert isinstance(result, str), f"Expected str, got {type(result)}"
     assert len(result) > 0, "Expected non-empty string"

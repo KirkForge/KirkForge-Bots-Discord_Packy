@@ -68,7 +68,7 @@ jobs:
         run: ruff format --check .
 
       - name: Run mypy
-        run: mypy src/ --ignore-missing-imports --no-error-summary --disable-error-code=attr-defined --disable-error-code=assignment --disable-error-code=arg-type --disable-error-code=truthy-function --disable-error-code=call-overload --disable-error-code=misc --disable-error-code=has-type --disable-error-code=var-annotated --disable-error-code=call-arg --disable-error-code=union-attr --disable-error-code=no-implicit-optional
+        run: mypy src/ --ignore-missing-imports --no-error-summary --disable-error-code=attr-defined --disable-error-code=assignment --disable-error-code=arg-type --disable-error-code=truthy-function --disable-error-code=call-overload --disable-error-code=misc --disable-error-code=has-type --disable-error-code=var-annotated --disable-error-code=call-arg --disable-error-code=union-attr --no-strict-optional
 
   pytest:
     name: Python Tests

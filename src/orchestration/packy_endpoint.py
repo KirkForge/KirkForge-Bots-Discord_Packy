@@ -82,13 +82,30 @@ if not logger.handlers:
 
 # ---- Auth Configuration ----
 API_SECRET = os.getenv("PACKY_API_SECRET", "")
-_bypass_auth = not API_SECRET  # if no secret set, allow all (dev mode)
+_DEV_LICENSE_ENV = "PACKY_DEV_LICENSE"
+
+
+def _dev_license_enabled() -> bool:
+    return os.getenv(_DEV_LICENSE_ENV, "").strip().lower() in ("1", "true", "yes")
+
+
+if not API_SECRET and not _dev_license_enabled():
+    sys.stderr.write(
+        "\n" + "=" * 70 + "\n"
+        "  FATAL: PACKY_API_SECRET is not set.\n"
+        "  The server refuses to start without authentication.\n"
+        "  Set PACKY_API_SECRET to a random secret (at least 32 chars),\n"
+        "  or set PACKY_DEV_LICENSE=1 for local development.\n" + "=" * 70 + "\n\n"
+    )
+    sys.exit(1)
+
+_bypass_auth = not API_SECRET  # dev mode: no secret required when DEV_LICENSE is set
 
 if not _bypass_auth:
     logger.warning("PACKY_API_SECRET is set — auth is enabled")
 else:
     logger.warning(
-        "PACKY_API_SECRET not set — auth is DISABLED (dev mode only, do not use in production)"
+        "PACKY_API_SECRET not set — auth is DISABLED (dev mode via PACKY_DEV_LICENSE, do not use in production)"
     )
 
 
@@ -462,11 +479,6 @@ class LoreResponse(BaseModel):
 # needs a signed file. Upgrade path: ship a signed community license generated
 # with `python -m tools.keygen` (requires the dev private key, intentionally not
 # in-repo) and drop this bypass.
-_DEV_LICENSE_ENV = "PACKY_DEV_LICENSE"
-
-
-def _dev_license_enabled() -> bool:
-    return os.getenv(_DEV_LICENSE_ENV, "").strip().lower() in ("1", "true", "yes")
 
 
 def _dev_community_license() -> LoadedLicense:

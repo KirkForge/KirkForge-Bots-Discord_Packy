@@ -32,7 +32,13 @@ def client(monkeypatch, tmp_path):
     The startup event runs boot_license() which calls sys.exit(1) on
     failure — so we have to seed a valid license on disk first, AND
     patch the embedded public key to match.
+
+    Auth gate: set PACKY_API_SECRET so the module-level check doesn't exit,
+    and send a Bearer token with every request.
     """
+    _TEST_SECRET = "test-admin-secret-at-least-32-chars"
+    monkeypatch.setenv("PACKY_API_SECRET", _TEST_SECRET)
+
     priv = Ed25519PrivateKey.generate()
     monkeypatch.setattr(license_keys_mod, "PUBLIC_KEY_RAW", priv.public_key().public_bytes_raw())
     license_dict = make_signed_license(priv, tier="pro")
@@ -50,7 +56,7 @@ def client(monkeypatch, tmp_path):
     # /admin/license has something to return.
     packy_endpoint.boot_license()
 
-    with TestClient(packy_endpoint.app) as c:
+    with TestClient(packy_endpoint.app, headers={"Authorization": f"Bearer {_TEST_SECRET}"}) as c:
         # The TestClient context manager triggers startup events, so
         # boot_license() will run AGAIN. We could skip the manual call
         # above, but having both ensures a clean state.
@@ -79,6 +85,8 @@ def test_admin_license_503_when_no_license_loaded(monkeypatch, tmp_path):
     # Build a fresh app with no license present. Patch boot_license to
     # a no-op so the lifespan startup event doesn't sys.exit(1) — we
     # want the route handler to actually run and return 503.
+    _TEST_SECRET = "test-admin-secret-at-least-32-chars"
+    monkeypatch.setenv("PACKY_API_SECRET", _TEST_SECRET)
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("PACKY_LICENSE_PATH", str(tmp_path / "no-license.json"))
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "no-cfg"))
@@ -90,7 +98,7 @@ def test_admin_license_503_when_no_license_loaded(monkeypatch, tmp_path):
     monkeypatch.setattr(packy_endpoint, "boot_license", lambda: None)
     lic_mod.current = None
 
-    with TestClient(packy_endpoint.app) as c:
+    with TestClient(packy_endpoint.app, headers={"Authorization": f"Bearer {_TEST_SECRET}"}) as c:
         r = c.get("/admin/license")
         assert r.status_code == 503
         assert "no license loaded" in r.json()["detail"].lower()

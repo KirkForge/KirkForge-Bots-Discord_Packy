@@ -63,11 +63,12 @@ src/orchestration/ — Python: packy_endpoint.py (FastAPI), packy_orchestrator.p
 | Variable | Required | Default | Notes |
 |---|---|---|---|
 | `DISCORD_TOKEN` | Yes | — | Bot token |
-| `BOT_MODE` | No | `direct` | `direct` or `microservice` |
+| `BOT_MODE` | No | `microservice` | Only `microservice` is supported (ADR-010) |
 | `PRIMARY_ADAPTER` | No | `claude` | `claude` or `minimax` |
 | `ANTHROPIC_API_KEY` | If adapter=claude | — | |
 | `MINIMAX_API_KEY` | If adapter=minimax | — | |
 | `MINIMAX_GROUP_ID` | If adapter=minimax | — | |
+| `PACKY_API_SECRET` | Yes (production) | — | Required at startup. Set `PACKY_DEV_LICENSE=1` for dev mode (ADR-019) |
 | `OPENWEATHER_API_KEY` | No | — | Enables weather-based mood |
 | `PACKY_LOCATION` | No | `London` | |
 | `COGNITION_PORT` | No | `8765` | Microservice port |
@@ -137,13 +138,14 @@ cd /path/to/GargoylePackyV2 && git add data/guild_config.json data/chaos_state.j
 ## 4. Verification
 - Run the gates before every commit. Paste the actual output (not paraphrased). A green claim requires the pasted output + the head SHA. "It passed" is not evidence.
 - Gates for this repo (DUAL stack — run both):
-  - Test (Python): `pytest` (`testpaths = ["test", "tests"]`)
-  - Test (Node): `npm test` (smoke); `npm run test:all` (smoke + integration: `test/integration/*.test.js`)
+  - Test (Python): `PYTHONPATH=. pytest tests/ test/ -q --cov=src --cov-fail-under=40`
+  - Test (Node): `npm test` (Vitest); `npm run test:all` (alias for Vitest)
   - Lint (Node): `npm run lint` (`eslint src/`)
   - Lint (Python): `ruff check .` (`target-version py311`, `line-length 100`, `E402` ignored for sys.path pattern)
   - Fmt (Python): `ruff format --check .` (`ruff format .` to write)
-  - Fmt (Node): n/a (no prettier configured in this repo)
-  - Typecheck: n/a (no `tsc`/`mypy` configured in this repo — `tsconfig.json` is gitignored/empty placeholder)
+  - Fmt (Node): `npm run fmt:check` (`npm run fmt` to write)
+  - Typecheck (Node): `npm run typecheck` (`tsc --noEmit`)
+  - Typecheck (Python): `mypy src/ --ignore-missing-imports`
 - Do not rewrite tests to make them pass. Fix the root cause.
 - Do not add `|| true`, `|| echo "non-fatal"`, `#[ignore]` to make red go green.
 

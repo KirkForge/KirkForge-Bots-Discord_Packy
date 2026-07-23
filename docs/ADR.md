@@ -452,3 +452,68 @@ Remove the composer from the LLM prompt path entirely. The composer is now an **
 - `cognition_text` in `RespondResponse` indicates which fallback fired.
 - `PACKY_COMPOSE_MODEL` env var selects the cheap model (default: claude-haiku-4-5-20251001).
 - `PackyCogEngine.think()` is now async (awaited in `packy_endpoint.py`).
+
+---
+
+## ADR-019: Auth Required at Startup
+
+**Status:** Accepted
+**Date:** 2026-07-23
+
+### Context
+
+`PACKY_API_SECRET` defaulted to an empty string, which set `_bypass_auth = True`, meaning anyone reaching port 8765 had full access to the `/respond` endpoint. This normalized running without authentication.
+
+### Decision
+
+Require `PACKY_API_SECRET` at startup. If the env var is empty or not set and `PACKY_DEV_LICENSE != 1`, the server refuses to start (`SystemExit(1)`). With `PACKY_DEV_LICENSE=1`, the server boots with auth disabled (dev mode).
+
+### Consequences
+
+- Production deployments always have auth enabled.
+- Dev mode requires explicit opt-in via `PACKY_DEV_LICENSE=1`.
+- `.env.example` updated with descriptive placeholder for `PACKY_API_SECRET`.
+
+---
+
+## ADR-020: Vitest Migration
+
+**Status:** Accepted
+**Date:** 2026-07-23
+
+### Context
+
+5 JS test files used `console.log` + manual pass/fail counters with no assertion library, no mocking, no coverage. There was no way to run structured assertions or measure test coverage.
+
+### Decision
+
+Migrate all Node tests to Vitest with `describe/it/expect` blocks. Added `vitest.config.ts` with `singleFork: true` for SQLite test isolation. Added `test`, `test:ci`, `typecheck`, `fmt`, and `fmt:check` npm scripts.
+
+### Consequences
+
+- All 77 Node assertions now use Vitest's `expect()` API.
+- Coverage report available via `npm run test:ci`.
+- New assertions added for rate limiter status tracking, chaos score bounds, concurrent DB writes, and metric aggregation.
+- CI smoke job updated to use `npm run test:ci`.
+
+---
+
+## ADR-021: Unified Python Dependencies
+
+**Status:** Accepted
+**Date:** 2026-07-23
+
+### Context
+
+Three dependency manifests existed: `requirements.txt`, `pyproject.toml`, and `uv.lock`. CI used `pip install -r requirements.txt` but modern Python uses `pyproject.toml`. Dependencies could drift between manifests.
+
+### Decision
+
+`pyproject.toml` is the single source of truth for Python dependencies. `requirements.txt` removed. CI and `Dockerfile.cognition` use `pip install -e ".[dev]"`. `uv.lock` tracked in git.
+
+### Consequences
+
+- No drift between dependency manifests.
+- Deterministic builds via `uv.lock`.
+- `stripe>=10.0` added to `pyproject.toml` (was imported but unlisted).
+- `Dockerfile.cognition` updated to use `pip install -e .`.

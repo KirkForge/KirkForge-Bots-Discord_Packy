@@ -1,55 +1,55 @@
 # State — KirkForge-Bots-Discord_Packy (2026-07-23)
 
-## What shipped this session (workorder-2026-07-23)
+## What shipped this session (workorder-5.0)
 
-All 4 tasks completed:
+### T1 — Remove committed .env, require auth at startup (commit `fba8887`)
+- `.env` was not in git (already gitignored). Auth now required at startup: `PACKY_API_SECRET` must be set, or `PACKY_DEV_LICENSE=1` for dev mode.
+- Updated `.env.example` with `PACKY_API_SECRET` required comment and descriptive placeholder. Fixed `BOT_MODE=microservice`.
+- `packy_endpoint.py`: added `SystemExit(1)` if no secret and no dev license. Moved `_dev_license_enabled()` to module top level.
+- `test_auth_startup.py`: 4 new tests (auth required, auth bypass in dev, auth enabled when secret set, auth header validation).
+- Updated `test_admin.py` and `test/smoke.py` to set `PACKY_API_SECRET` or `PACKY_DEV_LICENSE=1`.
 
-### T1 — FF main to dev (commit `5f4c1f9..8321827`)
-- Merged dev → main via fast-forward (6 commits from prior workorder)
-- Pushed to origin/main
-- Gate: `git log --oneline -1 main` = `8321827`
+### T2 — Vitest migration (commit `b0cdfc2`)
+- Migrated all 5 JS integration test files + smoke.js to Vitest `describe/it/expect` format.
+- Deleted `test/smoke.js` (replaced by `test/smoke.test.js`).
+- Added `vitest.config.ts`, `vitest` dev dependency, `test`/`test:ci`/`test:all` scripts.
+- 77 Node assertions across 6 test files. New assertions: rate limiter status tracking, chaos score bounds, concurrent DB writes, metric counter isolation, gauge overwrite, timing aggregation.
+- Updated CI smoke job to `npm run test:ci`.
 
-### T2 — Response composer: real LLM fallback (commit `adbf249`)
-- `PackyCogEngine.__init__` now accepts `llm_fn` parameter (constructor-injected from packy_endpoint)
-- `think()` is now async: tries `_llm_fallback()` first (calls cheap LLM), falls back to `random.choice` templates
-- `_llm_fallback()` calls injected `llm_fn` with `PACKY_COMPOSE_MODEL` (default: claude-haiku-4-5-20251001)
-- `packy_endpoint.py`: added `_compose_llm_fn` wrapper that calls `_call_claude` directly (raises on failure)
-- `call_llm`/`_call_claude` accept `model` override parameter
-- Updated ADR-018: "emergency-only, random.choice" → "cheap-LLM fallback, random.choice last-resort"
-- Added 5 LLM fallback tests + 2 docstring tests (15 total compose tests, up from 10)
-- Updated `test_cognition.py` for async `think()`
-- Gate: 81 Python tests passed, ruff check/format green
+### T3 — Add stripe dep, unify Python deps (commit `90f4824`)
+- Added `stripe>=10.0` to `pyproject.toml` and `requirements.txt`.
+- Removed `requirements.txt`. `pyproject.toml` is now single source of truth.
+- Updated CI and `Dockerfile.cognition` to `pip install -e ".[dev]"`.
+- Added `cryptography>=42.0.0`, `slowapi>=0.1.9` to pyproject.toml (were in requirements.txt but not pyproject.toml).
 
-### T3 — Replace remaining JSON-file persistence with SQLite (commit `16ca92a`)
-- `metrics.js`: replaced `fs.writeFileSync` flush to `data/metrics.json` with `flushMetricsToDb()` (SQLite)
-- `loreSelector.js`: replaced `fs.readFile` with `readJsonFileAsync()` from db.js
-- `db.js`: added `readJsonFile`, `readJsonFileAsync`, `flushMetricsToDb` utilities
-- `db.js`: `resetForTesting` handles missing `metrics` table gracefully
-- Gate: `grep "fs.readFile|fs.writeFile" src/bot/ src/cognition/` → only in db.js migration code
+### T4 — Coverage + type checking in CI (commit `b5f6050`)
+- Added `pytest-cov`, `coverage[toml]`, `mypy` to pyproject.toml dev deps.
+- CI: pytest runs with `--cov=src --cov-fail-under=40 --cov-report=xml --cov-report=term-missing`.
+- CI: added mypy step (`--exit-zero` first pass), tsc step, Prettier step.
+- Updated `tsconfig.json` from `{}` to real config. Added `@ts-nocheck` to all JS files.
+- Added `.prettierrc` with single quotes, trailing commas, print-width 100.
 
-### T4 — Sentry integration in production (commit `e162352`)
-- Added `@sentry/node ^9.0.0` to package.json dependencies
-- Fixed `metrics.js`: `require('@sentry/node')` now uses `createRequire` (ESM compatibility)
-- Added Sentry lazy-init smoke test: verify `error()` works with `SENTRY_DSN` set
-- Updated `.env.example`: corrected metrics flush description (SQLite, not JSON)
-- Gate: `npm run test:all` all pass (15/15 metrics, 30/30 db, 19/19 smoke, etc.), lint green
+### T5 — Remove @anthropic-ai/sdk, fix CI branches (commit `e0bc406`)
+- Removed `@anthropic-ai/sdk` from package.json (unused, no imports in src/).
+- Prettier formatting applied to all source files.
+- CI `pull_request` branches now include `dev` (was just `main`).
+
+### T6 — ADRs + AGENTS.md (commit `e0bc406+`)
+- ADR-019: Auth required at startup.
+- ADR-020: Vitest migration.
+- ADR-021: Unified Python deps.
+- Updated AGENTS.md: `PACKY_API_SECRET` in env table, updated verification gates.
 
 ## Current HEAD
 
-`e162352` on branch `workorder-2026-07-23` (3 commits ahead of `dev`)
-
-## What's pending
-
-- Push `workorder-2026-07-23` branch to origin (needs merge to dev)
-- FF main to dev after merge (minor follow-up)
-- Python side `packy_memory.py` still uses JSON file persistence (not in scope for this workorder, but noted for future)
-- `PACKY_COMPOSE_MODEL` is now wired and active; consider adding a model override test that verifies the compose model is actually different from the primary model
+`e0bc406` on branch `dev`
 
 ## Gate evidence
 
-All tasks green-gated with:
-- `PYTHONPATH=. python3 -m pytest -q` → 81 passed
-- `npm run test:all` → 19/19 smoke + 18/18 rateLimiter + 18/18 guildConfig + 18/18 chaos + 30/30 db + 15/15 metrics
 - `npm run lint` → exit 0
+- `npm run fmt:check` → "All matched files use Prettier code style!"
+- `npm run typecheck` → exit 0
+- `npx vitest run` → 77 passed
+- `PYTHONPATH=. python3 -m pytest tests/ test/ -q` → 85 passed
 - `ruff check .` → "All checks passed!"
-- `ruff format --check .` → "112 files already formatted"
+- `ruff format --check .` → "113 files already formatted"
